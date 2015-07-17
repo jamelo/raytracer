@@ -1,0 +1,7 @@
+#ifndef config_H
+#define config_H
+
+#define PROJECT_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define PROJECT_VERSION_MINOR @PROJECT_VERSION_MINOR@
+
+#endif //config_H
