@@ -10,6 +10,8 @@
 
 class Scene;
 
+constexpr float epsilon = 1e-10;
+
 ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recursion_depth);
 
 class Scene
@@ -26,6 +28,7 @@ public:
             m_lightSources(_lightSources) {
     }*/
 
+    //TODO: implement a proper constructor. Why are these parameters rvalue references?
     Scene(Camera&& _cam, std::vector<std::unique_ptr<Shape>>&& _shapes, std::vector<std::unique_ptr<LightSource>>&& _lightSources) :
             m_camera(_cam),
             m_shapes(std::move(_shapes)),
@@ -44,24 +47,28 @@ public:
         return m_lightSources;
     }
 
-    Image<ColourRgb<float>> render() const {
-        return m_camera.render([&](const Ray3& r) { return calculateRayColour(r, *this, 5); }, AntiAliaserRandom<16>());
+    //TODO: find a more appropriate place to pass in an anti aliaser. Should it not be a property of the camera instead of a property of the scene?
+    std::tuple<TaskHandle, std::shared_ptr<Image<ColourRgb<float>>>> render(ThreadPool& pool) const {
+        return m_camera.render(pool, [&](const Ray3& r) { return calculateRayColour(r, *this, 10); });
     }
 };
 
+//TODO: find a more appropriate place to define pi
 constexpr double pi() { return std::atan(1.0) * 4.0; }
 
 inline Vector3 randomVectorOnUnitSphere()
 {
     thread_local std::mt19937 randgen;
-    thread_local std::uniform_real_distribution<double> dist(0, 1);
+    thread_local std::uniform_real_distribution<float> dist(0, 1);
 
-    double theta = 2 * pi() * dist(randgen);
-    double phi = std::acos(2 * dist(randgen) - 1);
+    float theta = 2 * pi() * dist(randgen);
+    float phi = std::acos(2 * dist(randgen) - 1);
 
-    return Vector3{cos(theta), sin(theta), cos(phi)};
+    return Vector3{std::cos(theta), std::sin(theta), std::cos(phi)};
 }
 
+//TODO: add case for transmittance
+//TODO: break this function into smaller functions: one function for each surface type. sum results
 ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recursion_depth)
 {
     if (recursion_depth == 0) {
@@ -78,7 +85,7 @@ ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recur
     for (auto&& shape : scene.shapes()) {
         double intersectionDistance = shape->calculateRayIntersection(rn);
 
-        if (intersectionDistance < nearestIntersectionDistance && intersectionDistance > 0) {
+        if (intersectionDistance < nearestIntersectionDistance && intersectionDistance > epsilon) {
             nearestIntersectionDistance = intersectionDistance;
             nearestShape = shape.get();
         }
@@ -91,15 +98,16 @@ ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recur
     Point3 pointOfIntersection = rn.origin() + rn.direction() * nearestIntersectionDistance;
     Vector3 surfaceNormal = nearestShape->calculateNormal(pointOfIntersection);
 
-    if (nearestShape->surface().difuseReflectance() > 0.0) {
-        Vector3 nextRayDirection = randomVectorOnUnitSphere();
+    if (surfaceNormal * rn.direction() > 0.0) {
+        surfaceNormal -= surfaceNormal;
+    }
 
-        if (nextRayDirection * surfaceNormal < 0.0) {
-            nextRayDirection = -nextRayDirection;
-        }
+    if (nearestShape->surface().difuseReflectance() > 0.0) {
+        Vector3 randomVector = randomVectorOnUnitSphere();
+        Vector3 nextRayDirection = (randomVector * surfaceNormal < 0.0) ? -randomVector : randomVector;
 
         Ray3 nextRay = Ray3(pointOfIntersection, nextRayDirection);
-        double lambertianFactor = nextRayDirection * surfaceNormal;
+        double lambertianFactor = std::abs(nextRayDirection * surfaceNormal);
 
         colour += calculateRayColour(nextRay, scene, recursion_depth - 1) * lambertianFactor * nearestShape->surface().colour();
     }

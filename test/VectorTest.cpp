@@ -9,7 +9,7 @@ using namespace geometry;
 namespace
 {
 
-    const float epsilon = 1e-10;
+    const geo_type epsilon = 1e-10;
 
 }
 

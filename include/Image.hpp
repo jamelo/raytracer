@@ -118,25 +118,7 @@ public:
     friend class Image<PixelType>;
 };
 
-//TODO: implement colour profiles
-
-template <typename T>
-inline T clamp(T value, T low, T high)
-{
-    return std::max(std::min(value, high), low);
-}
-
-inline uint8_t map_float_to_uint8(float colour)
-{
-    thread_local std::default_random_engine randgen;
-    thread_local std::uniform_real_distribution<float> dist(-0.5/255, 0.5/255);
-    return uint8_t(std::floor(clamp((colour + dist(randgen)) * 256.0f, 0.0f, 255.0f)));
-}
-
-inline float map_uint8_to_float(uint8_t colour)
-{
-    return colour / 255.0f;
-}
+//TODO: implement colour profiles for float to rgb8 conversion
 
 
 template <typename PixelType>
@@ -199,23 +181,10 @@ public:
         size_t rowNumber = 0;
 
         for (auto row : *this) {
-            //uint8_t* outputPix = outputImage.getPixelsPtr() + 4 * m_width * rowNumber;
-
             size_t colNumber = 0;
 
             for (auto& pixel : row) {
-                /*uint8_t& red    = *outputPix;
-                uint8_t& green  = *(outputPix + 1);
-                uint8_t& blue   = *(outputPix + 2);*/
-                uint8_t red, green, blue;
-
-                red     = map_float_to_uint8(pixel.red());
-                green   = map_float_to_uint8(pixel.green());
-                blue    = map_float_to_uint8(pixel.blue());
-
-                outputImage.setPixel(colNumber, rowNumber, sf::Color(red, green, blue));
-
-                //outputPix += 4;
+                outputImage.setPixel(colNumber, rowNumber, colour_cast<sf::Color>(pixel));
                 colNumber++;
             }
 
@@ -253,10 +222,9 @@ private:
                 uint8_t& red    = *inputPix;
                 uint8_t& green  = *(inputPix + 1);
                 uint8_t& blue   = *(inputPix + 2);
+                uint8_t& alpha  = *(inputPix + 3);
 
-                pixel.red     = map_float_to_uint8(red);
-                pixel.green   = map_float_to_uint8(green);
-                pixel.blue    = map_float_to_uint8(blue);
+                pixel = colour_cast<PixelType>(sf::Color(red, green, blue, alpha));
 
                 inputPix += 4;
             }

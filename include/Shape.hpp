@@ -23,6 +23,7 @@ public:
 
     virtual double calculateRayIntersection(const Ray3& ray) const = 0;
     virtual Vector3 calculateNormal(const Point3& p) const = 0;
+    virtual Point2 textureMap(const Point3& p) const = 0;
 
     const SurfaceDescription& surface() const { return m_surface; }
     SurfaceDescription& surface() { return m_surface; }
@@ -42,7 +43,7 @@ public:
         m_origin(_origin),
         m_direction1(normalize(_dir1)),
         m_direction2(normalize(_dir2)),
-        m_normal(cross_product(_dir1, _dir2))
+        m_normal(normalize(cross_product(_dir1, _dir2)))
     {
         //TODO: validate inputs, throw exception
     }
@@ -54,6 +55,17 @@ public:
 
     virtual Vector3 calculateNormal(__attribute__((unused)) const Point3& p) const {
         return m_normal;
+    }
+
+    virtual Point2 textureMap(const Point3& p) const {
+        float dummy;
+        float x = std::modf((p - m_origin) * m_direction1, &dummy);
+        float y = std::modf((p - m_origin) * m_direction2, &dummy);
+
+        x = (x >= 0 ? x : x + 1.0);
+        y = (y >= 0 ? y : y + 1.0);
+
+        return Point2{x, y};
     }
 };
 
@@ -100,7 +112,12 @@ public:
     }
 
     virtual Vector3 calculateNormal(const Point3& p) const {
-        return p - m_origin;
+        return normalize(p - m_origin);
+    }
+
+    virtual Point2 textureMap(const Point3&) const {
+        //TODO: implement
+        return Point2{0, 0};
     }
 };
 
@@ -129,7 +146,7 @@ public:
 
     virtual double calculateRayIntersection(const Ray3& ray) const {
         Vector3 d = ray.direction();
-        Vector3 o = ray.origin() - Point3{0, 0, 0};
+        Vector3 o = ray.origin() - Point3{1, 1, 0};
 
         Vector3 d2 = {d.x() * d.x(), d.y() * d.y(), d.z() * d.z()};
         Vector3 o2 = {o.x() * o.x(), o.y() * o.y(), o.z() * o.z()};
@@ -162,11 +179,16 @@ public:
     }
 
     virtual Vector3 calculateNormal(const Point3& p) const {
-        double dx = 4 * b * p.x() * p.x() * p.x() - 2 * c * p.x();
-        double dy = 4 * b * p.y() * p.y() * p.y() - 2 * c * p.y();
-        double dz = 4 * b * p.z() * p.z() * p.z() - 2 * c * p.z();
+        float dx = 4 * b * p.x() * p.x() * p.x() - 2 * c * p.x();
+        float dy = 4 * b * p.y() * p.y() * p.y() - 2 * c * p.y();
+        float dz = 4 * b * p.z() * p.z() * p.z() - 2 * c * p.z();
 
         return normalize(Vector3{dx, dy, dz});
+    }
+
+    virtual Point2 textureMap(const Point3&) const {
+        //TODO: implement
+        return Point2{0, 0};
     }
 };
 

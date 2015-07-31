@@ -1,6 +1,11 @@
 #ifndef Colour_HPP
 #define Colour_HPP
 
+#include <SFML/Graphics/Image.hpp>
+
+//TODO: implement more colour models
+//TODO: implement wavelength based colour model
+
 template <typename T>
 class ColourRgb
 {
@@ -66,5 +71,47 @@ public:
         return ColourRgb<T>(*this) *= rhs;
     }
 };
+
+template <typename T>
+inline T clamp(T value, T low, T high)
+{
+    return std::max(std::min(value, high), low);
+}
+
+inline float map_uint8_to_float(uint8_t colour, float gamma = 2.2)
+{
+    return std::pow(colour / 255.0f, gamma);
+}
+
+inline uint8_t map_float_to_uint8(float colour, float gamma = 2.2)
+{
+    thread_local std::default_random_engine randgen;
+    thread_local std::uniform_real_distribution<float> dist(-0.5/255, 0.5/255);
+
+    return uint8_t(std::floor(clamp((std::pow(colour, 1.0f / gamma) + dist(randgen)) * 256.0f, 0.0f, 255.0f)));
+}
+
+template <typename Target, typename Source>
+Target colour_cast(const Source& src);
+
+template <>
+sf::Color colour_cast(const ColourRgb<float>& src)
+{
+    return sf::Color(
+            map_float_to_uint8(src.red()),
+            map_float_to_uint8(src.green()),
+            map_float_to_uint8(src.blue())
+    );
+}
+
+template <>
+ColourRgb<float> colour_cast(const sf::Color& src)
+{
+    return ColourRgb<float>(
+            map_uint8_to_float(src.r),
+            map_uint8_to_float(src.g),
+            map_uint8_to_float(src.b)
+    );
+}
 
 #endif // Colour_HPP

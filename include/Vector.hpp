@@ -9,7 +9,7 @@
 namespace geometry
 {
 
-    typedef float geo_type;
+    typedef double geo_type;
 
     template <typename T, size_t Dimensions>
     class Vector : public detail::point_base<T, Dimensions>

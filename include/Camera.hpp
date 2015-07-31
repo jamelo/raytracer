@@ -2,14 +2,17 @@
 #define Camera_HPP
 
 #include <cstddef>
+#include <memory>
 #include <mutex>
 #include <random>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 #include <Image.hpp>
 #include <Point.hpp>
 #include <Ray.hpp>
+#include <ThreadPool.hpp>
 
 using namespace geometry;
 
@@ -30,6 +33,8 @@ struct AntiAliaserNone
         }
     };
 
+    AntiAliaserNone(size_t) { }
+
     iterator begin() const { return iterator(0); }
     iterator end() const { return iterator(1); }
 
@@ -38,11 +43,15 @@ private:
     friend class iterator;
 };
 
-template <size_t AaAmount>
-struct AntiAliaserRandom
-{
-    static_assert(AaAmount > 0, "AaAmount must be greater than zero.");
+//TODO: consolidate random number generators
+//TODO: properly seed random number generators
 
+class AntiAliaserRandom
+{
+private:
+    size_t m_aaAmount;
+
+public:
     class iterator
     {
     private:
@@ -60,10 +69,12 @@ struct AntiAliaserRandom
         }
     };
 
-    iterator begin() const { return iterator(0); }
-    iterator end() const { return iterator(AaAmount); }
+    AntiAliaserRandom(size_t _aaAmount = 1) :
+        m_aaAmount(_aaAmount)
+    { }
 
-private:
+    iterator begin() const { return iterator(0); }
+    iterator end() const { return iterator(m_aaAmount); }
 
     friend class iterator;
 };
@@ -92,84 +103,48 @@ public:
         m_sensorSize = Vector2(aspectRatio, 1.0);
     }
 
-    template <typename Renderer, typename AntiAliaser>
-    Image<ColourRgb<float>> render(Renderer renderer, AntiAliaser antiAliaser) const
+    template <typename Renderer, typename AntiAliaser = AntiAliaserRandom>
+    std::tuple<TaskHandle, std::shared_ptr<Image<ColourRgb<float>>>> render(ThreadPool& pool, Renderer renderer, AntiAliaser antiAliaser = AntiAliaser(16)) const
     {
-        Image<ColourRgb<float>> image(m_resolutionX, m_resolutionY);
-        Vector2 halfSensor = m_sensorSize / 2;
-
-        double recipResX = 1.0 / m_resolutionX;
-        double recipResY = 1.0 / m_resolutionY;
-
-        Vector3 right = cross_product(m_direction, m_up);
-        Vector3 focalLengthDirection = m_direction * m_focalLength;
+        auto image = std::make_shared<Image<ColourRgb<float>>>(m_resolutionX, m_resolutionY);
 
         //TODO: optimize
 
-        size_t y = 0;
-        auto rowIter = image.begin();
+        TaskHandle taskHandle = pool.enqueueTask([=](const Problem& problem, const std::atomic<bool>& cancelled) {
+            size_t x = 0;
+            size_t y = problem[0];
+            auto row = *(image->begin() + y);
 
-        std::mutex rowMutex;
-        std::vector<std::thread> threads;
+            Vector2 halfSensor = m_sensorSize / 2;
+            Vector3 right = cross_product(m_direction, m_up);
+            Vector3 focalLengthDirection = m_direction * m_focalLength;
 
-        for (size_t t = 0; t < std::thread::hardware_concurrency(); t++) {
-            threads.emplace_back([=, &y, &rowIter, &rowMutex, &image]() {
-                size_t localY;
-                decltype(*rowIter) row;
+            double recipResX = 1.0 / m_resolutionX;
+            double recipResY = 1.0 / m_resolutionY;
+            double yf = -double(y * 2) * recipResY + 1.0;
 
-                for (;;) {
-                    {
-                        std::unique_lock<std::mutex> lock(rowMutex);
+            for (auto& pixel : row) {
+                double xf = -double(x * 2) * recipResX + 1.0;
 
-                        if (rowIter == image.end()) {
-                            return;
-                        }
+                size_t samples = 0;
 
-                        row = *rowIter;
-                        rowIter++;
-                        localY = y;
-                        y++;
-                    }
+                //Apply anti aliasing by generating vectors with slightly offset directions.
+                for (const auto& aaOffsetVector : antiAliaser) {
+                    double xfaa = (xf + aaOffsetVector.x() * recipResX) * halfSensor.x();
+                    double yfaa = (yf + aaOffsetVector.y() * recipResY) * halfSensor.y();
 
-                    double yf = double(localY * 2) * recipResY - 1.0;
-                    size_t x = 0;
+                    Ray3 ray(m_location, xfaa * right + yfaa * m_up + focalLengthDirection);
 
-                    for (auto& pixel : row) {
-                        double xf = double(x * 2) * recipResX - 1.0;
-
-                        size_t samples = 0;
-
-                        //Apply anti aliasing by generating vectors with slightly offset directions.
-                        for (const auto& aaOffsetVector : antiAliaser) {
-                            double xfaa = (xf + aaOffsetVector.x() * recipResX) * halfSensor.x();
-                            double yfaa = (yf + aaOffsetVector.y() * recipResY) * halfSensor.y();
-
-                            Ray3 ray(m_location, xfaa * right + yfaa * m_up + focalLengthDirection);
-
-                            pixel += renderer(ray);
-                            samples++;
-                        }
-
-                        pixel *= (1.0 / samples);
-
-                        x++;
-                    }
+                    pixel += renderer(ray);
+                    samples++;
                 }
-            });
-        }
 
-        /*for (auto row : image) {
+                pixel *= (1.0 / samples);
+                x++;
+            }
+        }, ProblemSpace(m_resolutionY));
 
-
-
-            y++;
-        }*/
-
-        for (auto& thread : threads) {
-            thread.join();
-        }
-
-        return image;
+        return std::make_tuple(std::move(taskHandle), std::move(image));
     }
 };
 

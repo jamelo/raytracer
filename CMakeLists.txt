@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(raytracer)
 
+set(CMAKE_AUTOMOC ON)
+
 add_subdirectory(gtest-1.7.0)
 add_subdirectory(test)
 
@@ -18,9 +20,7 @@ include_directories(
 )
 
 set(EXECUTABLE_NAME "raytracer")
-add_executable(${EXECUTABLE_NAME} main.cpp)
-
-set_target_properties(${EXECUTABLE_NAME} PROPERTIES COMPILE_FLAGS "")
+set(SOURCES main.cpp RaytracerWindow.cpp)
 
 # Use Clang
 #set(CMAKE_C_COMPILER                "/usr/bin/clang")
@@ -31,7 +31,7 @@ set(CMAKE_C_FLAGS_RELEASE           "-O4 -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO    "-O2 -g")
 
 #set(CMAKE_CXX_COMPILER              "clang++")
-set(CMAKE_CXX_FLAGS                 "-Wall -pedantic -Wextra -std=c++14 -Wno-missing-braces")
+set(CMAKE_CXX_FLAGS                 "-Wall -pedantic -Wextra -std=c++14 -Wno-missing-braces -g -O0")
 set(CMAKE_CXX_FLAGS_DEBUG           "-g -O0")
 set(CMAKE_CXX_FLAGS_MINSIZEREL      "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE         "-O4 -DNDEBUG -mfpmath=sse -mmmx -msse -msse2 -msse3 -save-temps")
@@ -45,15 +45,24 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "-O2 -g -pg -save-temps")
 
 # Require SFML
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules" ${CMAKE_MODULE_PATH})
-find_package(SFML 2.2 REQUIRED system window graphics)
-target_link_libraries(${EXECUTABLE_NAME} ${SFML_LIBRARIES})
 
-find_package( Boost 1.55 COMPONENTS REQUIRED )
-include_directories( ${Boost_INCLUDE_DIR} )
-target_link_libraries(${EXECUTABLE_NAME} ${Boost_LIBRARIES} -lboost_system -lboost_timer)
 
 find_package(Threads)
+find_package(Qt4 REQUIRED)
+find_package(Boost 1.55 COMPONENTS REQUIRED)
+find_package(SFML 2.2 REQUIRED system window graphics)
+
+include_directories(${Boost_INCLUDE_DIR} ${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
+
+qt4_automoc(${SOURCES})
+add_executable(${EXECUTABLE_NAME} ${SOURCES})
+set_target_properties(${EXECUTABLE_NAME} PROPERTIES COMPILE_FLAGS "")
+
+target_link_libraries(${EXECUTABLE_NAME} ${Boost_LIBRARIES} -lboost_system -lboost_timer)
+target_link_libraries(${EXECUTABLE_NAME} ${SFML_LIBRARIES})
 target_link_libraries(${EXECUTABLE_NAME} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${EXECUTABLE_NAME} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY})
+
 
 install(TARGETS ${EXECUTABLE_NAME} RUNTIME DESTINATION bin)
 
@@ -63,3 +72,4 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING")
 set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
 include(CPack)
+
