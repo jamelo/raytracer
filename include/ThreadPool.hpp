@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <Barrier.hpp>
+#include <Image.hpp>
 #include <Semaphore.hpp>
 
 class ProblemSpace;
@@ -94,16 +95,18 @@ inline Problem& Problem::operator++() {
 class Task
 {
 private:
-    typedef std::function<void(ProblemSpace::iterator problem, const std::atomic<bool>& cancelled)> TaskFunction;
+    typedef std::function<void(Image<ColourRgb<float>>& result, const Problem& problem, const std::atomic<bool>& cancelled)> TaskFunction;
 
     TaskFunction m_function;
     ProblemSpace m_problemSpace;
     std::unique_ptr<std::mutex> m_statusMutex;
     std::unique_ptr<std::condition_variable> m_taskComplete;
-    std::function<void(bool success)> m_completeCallback;
-    std::function<void(Problem)> m_problemCallback;
+    std::function<void(const Image<ColourRgb<float>>& result, bool success)> m_completeCallback;
+    std::function<void(const Image<ColourRgb<float>>& result, const Problem&)> m_problemCallback;
+    std::function<void(const Image<ColourRgb<float>>& result)> m_startCallback;
     std::atomic<bool> m_cancelled;
     bool m_completed;
+    Image<ColourRgb<float>> m_result;
 
     void notifyComplete() {
         std::unique_lock<std::mutex> lock(*m_statusMutex);
@@ -111,23 +114,30 @@ private:
         m_taskComplete->notify_all();
 
         if (m_completeCallback) {
-            m_completeCallback(!m_cancelled);
+            m_completeCallback(m_result, !m_cancelled);
         }
     }
 
     void notifyProblem(const Problem& problem) {
         if (m_problemCallback) {
-            m_problemCallback(problem);
+            m_problemCallback(m_result, problem);
         }
     }
 
-    Task(const TaskFunction& _function, const ProblemSpace& _problemSpace) :
+    void notifyStarted() {
+        if (m_startCallback) {
+            m_startCallback(m_result);
+        }
+    }
+
+    Task(Image<ColourRgb<float>>&& _image, const TaskFunction& _function, const ProblemSpace& _problemSpace) :
         m_function(_function),
         m_problemSpace(_problemSpace),
         m_statusMutex(std::make_unique<std::mutex>()),
         m_taskComplete(std::make_unique<std::condition_variable>()),
         m_cancelled(false),
-        m_completed(false)
+        m_completed(false),
+        m_result(std::move(_image))
     { }
 
 public:
@@ -140,8 +150,22 @@ public:
         m_statusMutex(std::move(task.m_statusMutex)),
         m_taskComplete(std::move(task.m_taskComplete)),
         m_cancelled(task.m_cancelled.load()),
-        m_completed(std::move(task.m_completed))
+        m_completed(std::move(task.m_completed)),
+        m_result(std::move(task.m_result))
     { }
+
+
+    Task& operator=(Task&& task) {
+        m_function = std::move(task.m_function);
+        m_problemSpace = std::move(task.m_problemSpace);
+        m_statusMutex = std::move(task.m_statusMutex);
+        m_taskComplete = std::move(task.m_taskComplete);
+        m_cancelled = task.m_cancelled.load();
+        m_completed = std::move(task.m_completed);
+        m_result = std::move(task.m_result);
+
+        return *this;
+    }
 
     void wait() {
         std::unique_lock<std::mutex> lock(*m_statusMutex);
@@ -165,16 +189,24 @@ public:
         return m_problemSpace;
     }
 
-    void operator()(ProblemSpace::iterator problem) const {
-        m_function(problem, m_cancelled);
+    void operator()(ProblemSpace::iterator problem) {
+        m_function(m_result, problem, m_cancelled);
     }
 
-    void setCompleteCallback(std::function<void(bool success)> func) {
+    void setCompleteCallback(std::function<void(const Image<ColourRgb<float>>& result, bool success)> func) {
         m_completeCallback = func;
     }
 
-    void setProblemCallback(std::function<void(Problem)> func) {
+    void setProblemCallback(std::function<void(const Image<ColourRgb<float>>& result, const Problem&)> func) {
         m_problemCallback = func;
+    }
+
+    void setStartCallback(std::function<void(const Image<ColourRgb<float>>& result)> func) {
+        m_startCallback = func;
+    }
+
+    const Image<ColourRgb<float>>& result() const {
+        return m_result;
     }
 
     friend class ThreadPool;
@@ -183,35 +215,40 @@ public:
 class TaskHandle
 {
 private:
-    std::reference_wrapper<Task> m_task;
+    std::shared_ptr<Task> m_task;
 
-    TaskHandle(Task& _task) :
-        m_task(_task)
+    TaskHandle(std::shared_ptr<Task> _task) :
+        m_task(std::move(_task))
     { }
 
 public:
     TaskHandle(const TaskHandle&) = delete;
     TaskHandle& operator=(const TaskHandle&) = delete;
     TaskHandle(TaskHandle&&) = default;
+    TaskHandle& operator=(TaskHandle&&) = default;
 
     void wait() {
-        m_task.get().wait();
+        m_task->wait();
     }
 
     void cancel() {
-        m_task.get().cancel();
+        m_task->cancel();
     }
 
     bool completed() {
-        return m_task.get().completed();
+        return m_task->completed();
     }
 
-    void setCompleteCallback(std::function<void(bool success)> func) {
-        m_task.get().setCompleteCallback(func);
+    void setCompleteCallback(std::function<void(const Image<ColourRgb<float>>& result, bool success)> func) {
+        m_task->setCompleteCallback(func);
     }
 
-    void setProblemCallback(std::function<void(Problem)> func) {
-        m_task.get().setProblemCallback(func);
+    void setProblemCallback(std::function<void(const Image<ColourRgb<float>>& result, const Problem&)> func) {
+        m_task->setProblemCallback(func);
+    }
+
+    void setStartCallback(std::function<void(const Image<ColourRgb<float>>& result)> func) {
+        m_task->setStartCallback(func);
     }
 
     friend class ThreadPool;
@@ -221,7 +258,7 @@ class ThreadPool
 {
 private:
     std::vector<std::thread> m_threads;
-    std::queue<Task> m_tasks;
+    std::queue<std::shared_ptr<Task>> m_tasks;
     std::mutex m_threadCounterMutex;
     std::mutex m_problemMutex;
     std::mutex m_queueMutex;
@@ -235,7 +272,7 @@ private:
     Barrier m_barrier;
     bool m_running;
 
-    Task* getNextTask() {
+    std::shared_ptr<Task> getNextTask() {
         std::unique_lock<std::mutex> counterLock(m_threadCounterMutex);
         m_threadsDoneCount++;
 
@@ -249,7 +286,7 @@ private:
             }
 
             m_threadsDoneCount = 0;
-            m_currentProblem = m_tasks.front().problemSpace().begin();
+            m_currentProblem = m_tasks.front()->problemSpace().begin();
         }
 
         counterLock.unlock();
@@ -259,10 +296,10 @@ private:
             return nullptr;
         }
 
-        return &m_tasks.front();
+        return m_tasks.front();
     }
 
-    void retireTask(Task* task) {
+    void retireTask(std::shared_ptr<Task>& task) {
         std::unique_lock<std::mutex> counterLock(m_threadCounterMutex);
         m_threadsDoneCount++;
 
@@ -284,12 +321,14 @@ private:
 
     void threadFunction() {
         while (true) {
-            Task* task = getNextTask();
+            std::shared_ptr<Task> task = getNextTask();
             ProblemSpace::iterator problem;
 
             if (!task) {
                 return;
             }
+
+            task->notifyStarted();
 
             while (!task->cancelled()) {
                 std::unique_lock<std::mutex> problemLock(m_problemMutex);
@@ -321,11 +360,12 @@ public:
         m_running(false)
     { }
 
-    TaskHandle enqueueTask(const Task::TaskFunction& function, const ProblemSpace& problemSpace) {
-        Task task(function, problemSpace);
+    TaskHandle enqueueTask(Image<ColourRgb<float>>&& image, const Task::TaskFunction& function, const ProblemSpace& problemSpace) {
+        auto task = std::make_shared<Task>(Task(std::move(image), function, problemSpace));
+        TaskHandle handle(task);
+
         std::unique_lock<std::mutex> lock(m_queueMutex);
         m_tasks.emplace(std::move(task));
-        TaskHandle handle(m_tasks.back());
         m_queueSemaphore.notify();
 
         if (!m_running) {

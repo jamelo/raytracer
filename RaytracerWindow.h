@@ -1,15 +1,48 @@
 #ifndef RaytracerWindow_H
 #define RaytracerWindow_H
 
-#include <QtGui/QMainWindow>
+#include <boost/timer/timer.hpp>
+
+#include <QImage>
+#include <QMainWindow>
+
+#include <ThreadPool.hpp>
+
+class Canvas;
+class QProgressBar;
+class QTimer;
 
 class RaytracerWindow : public QMainWindow
 {
     Q_OBJECT
 
+private:
+    Canvas* m_canvas;
+    QProgressBar* m_progressBar;
+    QTimer* m_refreshTimer;
+    QImage m_image;
+    std::unique_ptr<ThreadPool> m_threadPool;
+    boost::timer::auto_cpu_timer m_autoTimer;
+    std::unique_ptr<TaskHandle> m_task;
+
+signals:
+    void renderStart(int size);
+    void renderComplete(bool success);
+    void lineComplete(int line);
+
+private slots:
+    void renderStarted(int size);
+    void renderCompleted(bool success);
+    void lineCompleted(int line);
+    void refreshTimerTick();
+
 public:
-    RaytracerWindow();
+    RaytracerWindow(QWidget* parent = nullptr);
     virtual ~RaytracerWindow();
+
+protected:
+    virtual void closeEvent(QCloseEvent* event);
+
 };
 
 #endif

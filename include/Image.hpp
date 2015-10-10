@@ -5,13 +5,14 @@
 #include <cstddef>
 #include <cmath>
 #include <iterator>
+#include <memory>
 #include <random>
 
 #include <SFML/Graphics/Image.hpp>
 
 #include <Colour.hpp>
 
-size_t lcm(size_t a, size_t b)
+inline size_t lcm(size_t a, size_t b)
 {
     size_t a1 = a;
     size_t b1 = b;
@@ -26,25 +27,26 @@ size_t lcm(size_t a, size_t b)
     return (a * b) / a1;
 }
 
-template <typename PixelType>
+template <typename PixelType, bool is_const>
 class ImageIterator;
 
-template <typename PixelType>
+template <typename PixelType, bool is_const>
 class ImageRow
 {
-private:
-    PixelType* m_rowStart;
-    PixelType* m_rowEnd;
+public:
+    typedef typename std::conditional<is_const, const PixelType*, PixelType*>::type iterator;
+    typedef const PixelType* const_iterator;
 
-    ImageRow(PixelType* rowStart, PixelType* rowEnd) :
-    m_rowStart(rowStart),
-    m_rowEnd(rowEnd)
+private:
+    iterator m_rowStart;
+    iterator m_rowEnd;
+
+    ImageRow(iterator rowStart, iterator rowEnd) :
+        m_rowStart(rowStart),
+        m_rowEnd(rowEnd)
     { }
 
 public:
-    typedef PixelType* iterator;
-    typedef const PixelType* const_iterator;
-
     ImageRow() = default;
 
     iterator begin() { return m_rowStart; }
@@ -52,66 +54,71 @@ public:
     const_iterator begin() const { return m_rowStart; }
     const_iterator end() const { return m_rowEnd; }
 
-    friend class ImageIterator<PixelType>;
+    friend class ImageIterator<PixelType, is_const>;
 };
 
 template <typename PixelType>
 class Image;
 
-template <typename PixelType>
-class ImageIterator : public std::iterator<std::random_access_iterator_tag, ImageRow<PixelType>>
+template <typename PixelType, bool is_const = false>
+class ImageIterator : public std::iterator<std::random_access_iterator_tag, ImageRow<PixelType, is_const>>
 {
+public:
+    typedef std::random_access_iterator_tag iterator_category;
+    typedef typename std::conditional<is_const, const ImageRow<PixelType, true>, ImageRow<PixelType, false>>::type value_type;
+    typedef std::ptrdiff_t difference_type;
+    typedef value_type& reference;
+    typedef value_type* pointer;
+
+    typedef ImageIterator<PixelType, is_const> iterator_type;
+    typedef typename std::conditional<is_const, const Image<PixelType>, Image<PixelType>>::type image_type;
+    typedef typename std::conditional<is_const, const PixelType, PixelType>::type pixel_type;
+
 private:
-    Image<PixelType>* m_image;
-    PixelType* m_rowStart;
+    image_type* m_image;
+    pixel_type* m_rowStart;
 
-    ImageIterator(Image<PixelType>* image, size_t row) :
-            m_image(image)
+    ImageIterator(image_type& image, size_t row) :
+            m_image(&image)
     {
-        assert(image != nullptr);
-        assert(row <= image->height());
-
+        assert(row <= image.height());
         m_rowStart = m_image->data() + row * m_image->stride();
     }
 
 public:
     ImageIterator();
 
-    ImageIterator<PixelType>& operator++() { m_rowStart += m_image->stride(); return *this; }
-    ImageIterator<PixelType> operator++(int) { auto tmp = *this; operator++(); return tmp; }
-    ImageIterator<PixelType>& operator--() { m_rowStart -= m_image->stride(); return *this; }
-    ImageIterator<PixelType> operator--(int) { auto tmp = *this; operator--(); return tmp; }
+    iterator_type& operator++() { m_rowStart += m_image->stride(); return *this; }
+    iterator_type operator++(int) { auto tmp = *this; operator++(); return tmp; }
+    iterator_type& operator--() { m_rowStart -= m_image->stride(); return *this; }
+    iterator_type operator--(int) { auto tmp = *this; operator--(); return tmp; }
 
-    ImageIterator<PixelType>& operator+=(long int offset) { m_rowStart += m_image->stride() * offset; return *this; }
-    ImageIterator<PixelType>& operator-=(long int offset) { m_rowStart -= m_image->stride() * offset; return *this; }
-    ImageIterator<PixelType> operator+(long int offset) const { auto tmp = *this; return (tmp += offset); }
-    ImageIterator<PixelType> operator-(long int offset) const { auto tmp = *this; return (tmp -= offset); }
+    iterator_type& operator+=(long int offset) { m_rowStart += m_image->stride() * offset; return *this; }
+    iterator_type& operator-=(long int offset) { m_rowStart -= m_image->stride() * offset; return *this; }
+    iterator_type operator+(long int offset) const { auto tmp = *this; return (tmp += offset); }
+    iterator_type operator-(long int offset) const { auto tmp = *this; return (tmp -= offset); }
 
-    bool operator<(const ImageIterator<PixelType>& rhs) const { return m_rowStart < rhs.m_rowStart; }
-    bool operator>(const ImageIterator<PixelType>& rhs) const { return m_rowStart > rhs.m_rowStart; }
-    bool operator<=(const ImageIterator<PixelType>& rhs) const { return m_rowStart <= rhs.m_rowStart; }
-    bool operator>=(const ImageIterator<PixelType>& rhs) const { return m_rowStart >= rhs.m_rowStart; }
-    bool operator==(const ImageIterator<PixelType>& rhs) const { return m_rowStart == rhs.m_rowStart; }
-    bool operator!=(const ImageIterator<PixelType>& rhs) const { return m_rowStart != rhs.m_rowStart; }
+    bool operator<(const iterator_type& rhs) const { return m_rowStart < rhs.m_rowStart; }
+    bool operator>(const iterator_type& rhs) const { return m_rowStart > rhs.m_rowStart; }
+    bool operator<=(const iterator_type& rhs) const { return m_rowStart <= rhs.m_rowStart; }
+    bool operator>=(const iterator_type& rhs) const { return m_rowStart >= rhs.m_rowStart; }
+    bool operator==(const iterator_type& rhs) const { return m_rowStart == rhs.m_rowStart; }
+    bool operator!=(const iterator_type& rhs) const { return m_rowStart != rhs.m_rowStart; }
 
-    ImageRow<PixelType> operator*() const
-    {
-        return ImageRow<PixelType>(m_rowStart, m_rowStart + m_image->width());
+    value_type operator*() const {
+        return value_type(m_rowStart, m_rowStart + m_image->width());
     }
 
-    ImageRow<PixelType> operator[](size_t index) const
-    {
-        PixelType* rowStart = m_rowStart + m_image->stride() * index;
-        return ImageRow<PixelType>(rowStart, rowStart + m_image->width());
+    value_type operator[](size_t index) const {
+        pixel_type* rowStart = m_rowStart + m_image->stride() * index;
+        return value_type(rowStart, rowStart + m_image->width());
     }
 
-    friend ImageIterator<PixelType> operator+(long int offset, const ImageIterator<PixelType>& it)
-    {
+    friend iterator_type operator+(long int offset, const iterator_type& it) {
         auto tmp = it; return (tmp += offset);
     }
 
-    friend ImageIterator<PixelType> operator-(long int offset, const ImageIterator<PixelType>& it)
-    {
+    friend iterator_type operator-(long int offset, const iterator_type& it) {
         auto tmp = it; return (tmp -= offset);
     }
 
@@ -125,7 +132,7 @@ template <typename PixelType>
 class Image
 {
 private:
-    PixelType* m_imageData;
+    std::unique_ptr<PixelType[]> m_imageData;
     size_t m_width;
     size_t m_height;
     size_t m_stride;
@@ -133,47 +140,43 @@ private:
     static const size_t CACHE_LINE_SIZE = 64;
 
 public:
-    typedef ImageIterator<PixelType> iterator;
-    typedef ImageIterator<const PixelType> const_iterator;
+    typedef ImageIterator<PixelType, false> iterator;
+    typedef ImageIterator<PixelType, true> const_iterator;
 
     Image(size_t _width, size_t _height) :
-            m_imageData(0),
-            m_width(0),
-            m_height(0),
-            m_stride(0)
+        m_width(0),
+        m_height(0),
+        m_stride(0)
     {
         create(_width, _height);
     }
 
     Image(const std::string& fileName) :
-    m_imageData(0),
-    m_width(0),
-    m_height(0),
-    m_stride(0)
+        m_width(0),
+        m_height(0),
+        m_stride(0)
     {
         load(fileName);
     }
 
-    ~Image()
-    {
-        delete m_imageData;
-    }
+    Image(Image<PixelType>&&) = default;
+    Image& operator=(Image<PixelType>&&) = default;
 
-    size_t width() const { return m_width; }
+    size_t width()  const { return m_width; }
     size_t height() const { return m_height; }
     size_t stride() const { return m_stride; }
 
-    iterator begin() { return iterator(this, 0); }
-    iterator end() { return iterator(this, m_height ); }
-    const_iterator begin() const { return const_iterator(this, 0); }
-    const_iterator end() const { return const_iterator(this, m_height); }
-    const_iterator cbegin() const { return begin(); }
-    const_iterator cend() const { return end(); }
+    iterator        begin()        { return iterator(*this, 0); }
+    iterator        end()          { return iterator(*this, m_height ); }
+    const_iterator  begin()  const { return const_iterator(*this, 0); }
+    const_iterator  end()    const { return const_iterator(*this, m_height); }
+    const_iterator  cbegin() const { return begin(); }
+    const_iterator  cend()   const { return end(); }
 
-    PixelType* data() { return m_imageData; }
-    const PixelType* data() const { return m_imageData; }
+    PixelType* data() { return m_imageData.get(); }
+    const PixelType* data() const { return m_imageData.get(); }
 
-    void save(const std::string& fileName)
+    void save(const std::string& fileName) const
     {
         sf::Image outputImage;
         outputImage.create(m_width, m_height);
@@ -197,11 +200,11 @@ public:
 private:
     void create(size_t _width, size_t _height)
     {
-        assert(m_imageData == nullptr);
+        assert(!m_imageData);
 
         size_t blockSize = lcm(CACHE_LINE_SIZE, sizeof(PixelType)) / sizeof(PixelType);
         m_stride = ((_width + blockSize - 1) / blockSize) * blockSize;
-        m_imageData = new PixelType[m_stride * _height];
+        m_imageData = std::make_unique<PixelType[]>(m_stride * _height);
         m_width = _width;
         m_height = _height;
     }

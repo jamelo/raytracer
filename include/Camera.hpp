@@ -12,6 +12,7 @@
 #include <Image.hpp>
 #include <Point.hpp>
 #include <Ray.hpp>
+#include <RandomGenerator.hpp>
 #include <ThreadPool.hpp>
 
 using namespace geometry;
@@ -63,9 +64,8 @@ public:
         bool operator!=(iterator rhs) { return m_n != rhs.m_n; }
 
         Vector2 operator*() const {
-            thread_local std::mt19937 randgen;
             thread_local std::uniform_real_distribution<double> dist(-1.0, 1.0);
-            return Vector2(dist(randgen), dist(randgen));
+            return Vector2(dist(RandomGenerator::get_instance()), dist(RandomGenerator::get_instance()));
         }
     };
 
@@ -89,38 +89,43 @@ private:
     double m_focalLength;
     size_t m_resolutionX;
     size_t m_resolutionY;
+    size_t m_antiAliasingAmount;
 
 public:
     Camera(size_t resX, size_t resY, Point3 location, Vector3 direction, double focalLength = 1.0,
-            Vector3 up = {0.0, 1.0, 0.0}) :
+            Vector3 up = {0.0, 1.0, 0.0}, size_t antiAliasingAmount = 32) :
             m_location(location),
             m_direction(normalize(direction)),
             m_up(normalize(up)),
             m_focalLength(focalLength),
             m_resolutionX(resX),
-            m_resolutionY(resY) {
+            m_resolutionY(resY),
+            m_antiAliasingAmount(antiAliasingAmount) {
         double aspectRatio = double(resX) / double(resY);
         m_sensorSize = Vector2(aspectRatio, 1.0);
     }
 
     template <typename Renderer, typename AntiAliaser = AntiAliaserRandom>
-    std::tuple<TaskHandle, std::shared_ptr<Image<ColourRgb<float>>>> render(ThreadPool& pool, Renderer renderer, AntiAliaser antiAliaser = AntiAliaser(16)) const
+    TaskHandle render(ThreadPool& pool, Renderer renderer) const
     {
-        auto image = std::make_shared<Image<ColourRgb<float>>>(m_resolutionX, m_resolutionY);
+        AntiAliaser antiAliaser = AntiAliaser(m_antiAliasingAmount);
+        auto image = Image<ColourRgb<float>>(m_resolutionX, m_resolutionY);
+
+        Camera c(*this);
 
         //TODO: optimize
 
-        TaskHandle taskHandle = pool.enqueueTask([=](const Problem& problem, const std::atomic<bool>& cancelled) {
+        TaskHandle taskHandle = pool.enqueueTask(std::move(image), [=](Image<ColourRgb<float>>& result, const Problem& problem, const std::atomic<bool>& cancelled) {
             size_t x = 0;
             size_t y = problem[0];
-            auto row = *(image->begin() + y);
+            auto row = *(result.begin() + y);
 
-            Vector2 halfSensor = m_sensorSize / 2;
-            Vector3 right = cross_product(m_direction, m_up);
-            Vector3 focalLengthDirection = m_direction * m_focalLength;
+            Vector2 halfSensor = c.m_sensorSize / 2;
+            Vector3 right = cross_product(c.m_direction, c.m_up);
+            Vector3 focalLengthDirection = c.m_direction * c.m_focalLength;
 
-            double recipResX = 1.0 / m_resolutionX;
-            double recipResY = 1.0 / m_resolutionY;
+            double recipResX = 1.0 / c.m_resolutionX;
+            double recipResY = 1.0 / c.m_resolutionY;
             double yf = -double(y * 2) * recipResY + 1.0;
 
             for (auto& pixel : row) {
@@ -133,7 +138,7 @@ public:
                     double xfaa = (xf + aaOffsetVector.x() * recipResX) * halfSensor.x();
                     double yfaa = (yf + aaOffsetVector.y() * recipResY) * halfSensor.y();
 
-                    Ray3 ray(m_location, xfaa * right + yfaa * m_up + focalLengthDirection);
+                    Ray3 ray(c.m_location, xfaa * right + yfaa * c.m_up + focalLengthDirection);
 
                     pixel += renderer(ray);
                     samples++;
@@ -142,9 +147,9 @@ public:
                 pixel *= (1.0 / samples);
                 x++;
             }
-        }, ProblemSpace(m_resolutionY));
+        }, ProblemSpace(c.m_resolutionY));
 
-        return std::make_tuple(std::move(taskHandle), std::move(image));
+        return taskHandle;
     }
 };
 

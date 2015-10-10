@@ -23,6 +23,10 @@ namespace geometry
                 detail::point_base<T, Dimensions>(_components) {
         }
 
+        explicit Vector(const detail::point_base<T, Dimensions>& _data) :
+                detail::point_base<T, Dimensions>(_data) {
+        }
+
         Vector<T, Dimensions> operator+() const {
             return *this;
         }
@@ -127,13 +131,13 @@ namespace geometry
     typedef Vector3t<geo_type> Vector3;
 
     template <typename T>
-    inline Vector3t<T> cross_product(const Vector3t<T>& lhs, const Vector3t<T>& rhs)
+    inline Vector<T, 3> cross_product(const Vector<T, 3>& lhs, const Vector<T, 3>& rhs)
     {
-        return Vector3t<T>(
-                lhs.y() * rhs.z() - lhs.z() * rhs.y(),
-                lhs.z() * rhs.x() - lhs.x() * rhs.z(),
-                lhs.x() * rhs.y() - lhs.y() * rhs.x()
-        );
+        return Vector<T, 3>(std::array<T, 3>({
+                lhs[1] * rhs[2] - lhs[2] * rhs[1],
+                lhs[2] * rhs[0] - lhs[0] * rhs[2],
+                lhs[0] * rhs[1] - lhs[1] * rhs[0]
+        }));
     }
 
     template <typename T, size_t Dimensions>

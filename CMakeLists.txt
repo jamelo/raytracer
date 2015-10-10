@@ -20,7 +20,7 @@ include_directories(
 )
 
 set(EXECUTABLE_NAME "raytracer")
-set(SOURCES main.cpp RaytracerWindow.cpp)
+set(SOURCES main.cpp RaytracerWindow.cpp Canvas.cpp)
 
 # Use Clang
 #set(CMAKE_C_COMPILER                "/usr/bin/clang")
@@ -31,11 +31,11 @@ set(CMAKE_C_FLAGS_RELEASE           "-O4 -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO    "-O2 -g")
 
 #set(CMAKE_CXX_COMPILER              "clang++")
-set(CMAKE_CXX_FLAGS                 "-Wall -pedantic -Wextra -std=c++14 -Wno-missing-braces -g -O0")
+set(CMAKE_CXX_FLAGS                 "-Wall -pedantic -Wextra -std=c++14 -Wno-missing-braces")
 set(CMAKE_CXX_FLAGS_DEBUG           "-g -O0")
 set(CMAKE_CXX_FLAGS_MINSIZEREL      "-Os -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE         "-O4 -DNDEBUG -mfpmath=sse -mmmx -msse -msse2 -msse3 -save-temps")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "-O2 -g -pg -save-temps")
+set(CMAKE_CXX_FLAGS_RELEASE         "-O4 -DNDEBUG -mfpmath=sse -mmmx -msse -msse2 -msse3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "-O2 -g -pg")
 
 #set(CMAKE_AR      "/usr/bin/llvm-ar")
 #set(CMAKE_LINKER  "/usr/bin/llvm-ld")

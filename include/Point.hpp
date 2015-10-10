@@ -23,6 +23,14 @@ namespace geometry
                 detail::point_base<T, Dimensions>(_components) {
         }
 
+        explicit Point(const detail::point_base<T, Dimensions>& _data) :
+                detail::point_base<T, Dimensions>(_data) {
+        }
+
+        explicit operator Vector<T, Dimensions>() {
+            return Vector<T, Dimensions>(static_cast<detail::point_base<T, Dimensions>>(*this()));
+        }
+
         Point<T, Dimensions>& operator+=(const Vector<T, Dimensions>& rhs) {
             std::transform(this->begin(), this->end(), rhs.begin(), this->begin(), std::plus<T>());
             return *this;

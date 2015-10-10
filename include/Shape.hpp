@@ -7,9 +7,28 @@
 #include <Point.hpp>
 #include <Ray.hpp>
 #include <SurfaceDescription.hpp>
+#include <Transformation.hpp>
 #include <Vector.hpp>
 
 using namespace geometry;
+
+class Shape;
+
+class IntersectionInfo
+{
+private:
+    double m_distance;
+    const Shape* m_shape;
+
+public:
+    IntersectionInfo(double _distance = std::numeric_limits<double>::infinity(), const Shape* _shape = nullptr) :
+        m_distance(_distance),
+        m_shape(_shape)
+    { }
+
+    double distance() const { return m_distance; }
+    const Shape* shape() const { return m_shape; }
+};
 
 class Shape
 {
@@ -21,7 +40,7 @@ public:
             m_surface(_surface) {
     }
 
-    virtual double calculateRayIntersection(const Ray3& ray) const = 0;
+    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const = 0;
     virtual Vector3 calculateNormal(const Point3& p) const = 0;
     virtual Point2 textureMap(const Point3& p) const = 0;
 
@@ -48,12 +67,12 @@ public:
         //TODO: validate inputs, throw exception
     }
 
-    virtual double calculateRayIntersection(const Ray3& ray) const {
+    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const {
         Vector3 diff = m_origin - ray.origin();
-        return (m_normal * (diff)) / (m_normal * ray.direction());
+        return IntersectionInfo((m_normal * (diff)) / (m_normal * ray.direction()), this);
     }
 
-    virtual Vector3 calculateNormal(__attribute__((unused)) const Point3& p) const {
+    virtual Vector3 calculateNormal(const Point3&) const {
         return m_normal;
     }
 
@@ -66,6 +85,120 @@ public:
         y = (y >= 0 ? y : y + 1.0);
 
         return Point2{x, y};
+    }
+};
+
+class Rectangle : public Shape
+{
+private:
+    Point3 m_p0;
+    Point3 m_p1;
+    Point3 m_p2;
+    Vector3 m_normal;
+    Vector3 m_v0;
+    Vector3 m_v1;
+    float m_v0_v1;
+    float m_v1_v1;
+    float m_v0_v0;
+    float m_recipDenominator;
+
+public:
+    Rectangle(const Point3& p0, const Point3& p1, const Point3& p2, const SurfaceDescription& surface) :
+        Shape(surface),
+        m_p0(p0),
+        m_p1(p1),
+        m_p2(p2),
+        m_normal(normalize(cross_product(p1 - p0, p2 - p0))),
+        m_v0(m_p2 - m_p0),
+        m_v1(m_p1 - m_p0),
+        m_v0_v1(m_v0 * m_v1),
+        m_v1_v1(m_v1 * m_v1),
+        m_v0_v0(m_v0 * m_v0),
+        m_recipDenominator(1.0 / (m_v0_v0 * m_v1_v1 - m_v0_v1 * m_v0_v1))
+    { }
+
+    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const {
+        Vector3 diff = m_p0 - ray.origin();
+        double distance = (m_normal * diff) / (m_normal * ray.direction());
+        Point3 poi = ray.origin() + distance * ray.direction();
+
+        Vector3 v2 = poi - m_p0;
+
+        float u = (m_v1_v1 * (v2 * m_v0) - m_v0_v1 * (v2 * m_v1)) * m_recipDenominator;
+        float v = (m_v0_v0 * (v2 * m_v1) - m_v0_v1 * (v2 * m_v0)) * m_recipDenominator;
+
+        return (u >= 0 && v >= 0 && u <= 1 && v <= 1) ? IntersectionInfo(distance, this) : IntersectionInfo();
+    }
+
+    virtual Vector3 calculateNormal(const Point3&) const {
+        return m_normal;
+    }
+
+    virtual Point2 textureMap(const Point3& p) const {
+        float dummy;
+        float x = std::modf((p - m_p0) * (m_p1 - m_p0), &dummy);
+        float y = std::modf((p - m_p0) * (m_p2 - m_p0), &dummy);
+
+        x = (x >= 0 ? x : x + 1.0);
+        y = (y >= 0 ? y : y + 1.0);
+
+        return Point2{x, y};
+    }
+};
+
+class Box : public Shape
+{
+private:
+    std::array<Rectangle, 6> m_sides;
+
+public:
+    Box(const Vector3& size, const Point3& location, const Vector3& orientation, const SurfaceDescription& surface) : Shape(surface),
+    m_sides{Rectangle({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, surface), Rectangle({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, surface), Rectangle({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, surface), Rectangle({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, surface), Rectangle({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, surface), Rectangle({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, surface)}
+    {
+        Vector3 s = size * 0.5;
+        Vector3 origin = static_cast<Vector<double, 3ul>>(location);
+
+        auto rotationTransform = rotation(orientation[0], orientation[1], orientation[2]);
+
+        std::array<Point3, 8> points{
+            rotationTransform * Point3{-s[0],  s[1], -s[2]} + origin,
+            rotationTransform * Point3{ s[0],  s[1], -s[2]} + origin,
+            rotationTransform * Point3{ s[0],  s[1],  s[2]} + origin,
+            rotationTransform * Point3{-s[0],  s[1],  s[2]} + origin,
+            rotationTransform * Point3{-s[0], -s[1], -s[2]} + origin,
+            rotationTransform * Point3{ s[0], -s[1], -s[2]} + origin,
+            rotationTransform * Point3{ s[0], -s[1],  s[2]} + origin,
+            rotationTransform * Point3{-s[0], -s[1],  s[2]} + origin
+        };
+
+        m_sides[0] = Rectangle(points[0], points[1], points[3], surface);
+        m_sides[1] = Rectangle(points[4], points[5], points[0], surface);
+        m_sides[2] = Rectangle(points[5], points[6], points[1], surface);
+        m_sides[3] = Rectangle(points[6], points[7], points[2], surface);
+        m_sides[4] = Rectangle(points[7], points[4], points[3], surface);
+        m_sides[5] = Rectangle(points[7], points[4], points[6], surface);
+    }
+
+    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const {
+        IntersectionInfo nearestIntersection;
+
+        for (const auto& side : m_sides) {
+            IntersectionInfo i = side.calculateRayIntersection(ray);
+
+            if (i.distance() < nearestIntersection.distance()) {
+                nearestIntersection = i;
+            }
+        }
+
+        return nearestIntersection;
+    }
+
+    virtual Vector3 calculateNormal(const Point3&) const {
+        return Vector3{0, 0, 0};
+    }
+
+    virtual Point2 textureMap(const Point3& p) const {
+        return Point2{0, 0};
     }
 };
 
@@ -86,29 +219,26 @@ public:
         m_radiusSquared(_radius * _radius)
     { }
 
-    virtual double calculateRayIntersection(const Ray3& ray) const {
+    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const {
         Vector3 newOrigin = m_origin - ray.origin();
         double projectedCentre = newOrigin * ray.direction();               //Project centre of sphere onto ray
         double discriminant = m_radiusSquared - (newOrigin * newOrigin - projectedCentre * projectedCentre);
 
         if (discriminant < 0) {
-            return std::numeric_limits<double>::infinity();
+            return IntersectionInfo();
         }
 
         double squareRootDiscriminant = std::sqrt(discriminant);
         double p1 = projectedCentre - squareRootDiscriminant;
-
-        if (p1 > 0) {
-            return p1;
-        }
-
         double p2 = projectedCentre + squareRootDiscriminant;
 
-        if (p2 > 0) {
-            return p2;
+        if (p1 > 0) {
+            return IntersectionInfo(p1, this);
+        } else if (p2 > 0) {
+            return IntersectionInfo(p2, this);
         }
 
-        return std::numeric_limits<double>::infinity();
+        return IntersectionInfo();
     }
 
     virtual Vector3 calculateNormal(const Point3& p) const {
@@ -144,7 +274,7 @@ public:
         m_innerRadius(_innerRadius)
     { }
 
-    virtual double calculateRayIntersection(const Ray3& ray) const {
+    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const {
         Vector3 d = ray.direction();
         Vector3 o = ray.origin() - Point3{1, 1, 0};
 
@@ -172,10 +302,10 @@ public:
         } while (std::abs(t - t0) / t > 0.0000001 && t < 20);
 
         if (t > 20) {
-            return std::numeric_limits<double>::infinity();
+            return IntersectionInfo();
         }
 
-        return t;
+        return IntersectionInfo(t, this);
     }
 
     virtual Vector3 calculateNormal(const Point3& p) const {
