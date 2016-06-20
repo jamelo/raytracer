@@ -3,8 +3,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
-#include <PointBase.hpp>
+#include <geometry/PointBase.hpp>
 
 namespace geometry
 {

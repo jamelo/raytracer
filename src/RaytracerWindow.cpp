@@ -10,23 +10,23 @@
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
+#include <QProgressBar>
 #include <QTimer>
+#include <QStatusBar>
 
 #include "Canvas.h"
 
+#include <threading/ThreadPool.hpp>
+#include <graphics/Image.hpp>
 #include <Camera.hpp>
-#include <Image.hpp>
 #include <Raytracer.hpp>
-#include <ThreadPool.hpp>
-
-#include <QProgressBar>
-#include <QStatusBar>
+#include <Shapes.hpp>
 
 RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
     m_canvas(new Canvas(this)),
     m_progressBar(new QProgressBar(this)),
     m_refreshTimer(new QTimer(this)),
-    m_threadPool(std::make_unique<ThreadPool>())
+    m_threadPool(std::make_unique<threading::ThreadPool>())
 {
     QAction* action = new QAction(this);
     action->setText("&Close");
@@ -34,7 +34,7 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
     menuBar()->addMenu("&File")->addAction(action);
 
     this->setCentralWidget(m_canvas);
-    this->setGeometry(50, 50, 1280, 720);
+    this->setGeometry(50, 50, 848, 480);
 
     m_progressBar->setMinimumWidth(150);
     m_progressBar->setMaximumWidth(150);
@@ -59,7 +59,7 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
     //shapes.push_back(std::unique_ptr<Shape>(new Sphere({0, 0, 1}, {0, 1, 0}, 1.0, sphereSurface)));
     //shapes.push_back(std::unique_ptr<Shape>(new Chmutov({0, 0, 1}, {0, 1, 0}, 1.0, 0.5, sphereSurface)));
 
-    Camera camera(1280, 720, {0, 0, -9}, {0, 0, 1}, 1, {0, 1, 0}, 256);
+    Camera camera(1250, 720, {0, 0, -9}, {0, 0, 1}, 1, {0, 1, 0}, 512);
 
     SurfaceDescription redWall({1, 0, 0}, 1, 0, 0, 0);
     SurfaceDescription greenWall({0, 1, 0}, 1, 0, 0, 0);
@@ -69,16 +69,16 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
     SurfaceDescription glass({1, 1, 1}, 0, 0, 1.0, 0, 1.5);
 
     std::vector<std::shared_ptr<Shape>> shapes;
-    shapes.emplace_back(std::make_shared<Plane>(Plane({-4, 0, 0}, {0, 1, 0}, {0, 0, 1}, redWall)));
-    shapes.emplace_back(std::make_shared<Plane>(Plane({+4, 0, 0}, {0, -1, 0}, {0, 0, 1}, greenWall)));
-    shapes.emplace_back(std::make_shared<Plane>(Plane({0, +3, 0}, {1, 0, 0}, {0, 0, 1}, whiteWall)));
-    shapes.emplace_back(std::make_shared<Plane>(Plane({0, -3, 0}, {-1, 0, 0}, {0, 0, 1}, whiteWall)));
-    shapes.emplace_back(std::make_shared<Plane>(Plane({0, 0, +3}, {-1, 0, 0}, {0, 1, 0}, whiteWall)));
-    shapes.emplace_back(std::make_shared<Plane>(Plane({0, 0, -10}, {1, 0, 0}, {0, 1, 0}, whiteWall)));
-    shapes.emplace_back(std::make_shared<Rectangle>(Rectangle({-1, 2.99, -1}, {1, 2.99, -1}, {-1, 2.99, 1}, lightSource)));
-    shapes.emplace_back(std::make_shared<Box>(Box({2, 2, 2}, {0, -1, 0}, {pi()/4, pi()/5, pi()/4}, whiteWall)));
-    shapes.emplace_back(std::make_shared<Sphere>(Sphere({-2, -2, -1.5}, {0, 1, 0}, 1, reflective)));
-    shapes.emplace_back(std::make_shared<Sphere>(Sphere({2, -2.1, -1.6}, {0, 1, 0}, 0.9, glass)));
+    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({-4, 0, 0}, {0, 1, 0}, {0, 0, 1}, redWall)));
+    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({+4, 0, 0}, {0, -1, 0}, {0, 0, 1}, greenWall)));
+    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, +3, 0}, {1, 0, 0}, {0, 0, 1}, whiteWall)));
+    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, -3, 0}, {-1, 0, 0}, {0, 0, 1}, whiteWall)));
+    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, 0, +3}, {-1, 0, 0}, {0, 1, 0}, whiteWall)));
+    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, 0, -10}, {1, 0, 0}, {0, 1, 0}, whiteWall)));
+    shapes.emplace_back(std::make_shared<shapes::Rectangle>(shapes::Rectangle({-1, 2.99, -1}, {1, 2.99, -1}, {-1, 2.99, 1}, lightSource)));
+    shapes.emplace_back(std::make_shared<shapes::Box>(shapes::Box({2, 2, 2}, {0, -1, 0}, {pi()/4, pi()/5, pi()/4}, whiteWall)));
+    shapes.emplace_back(std::make_shared<shapes::Sphere>(shapes::Sphere({-2, -2, -1.5}, {0, 1, 0}, 1, reflective)));
+    shapes.emplace_back(std::make_shared<shapes::Sphere>(shapes::Sphere({2, -2.1, -1.6}, {0, 1, 0}, 0.9, glass)));
     //shapes.emplace_back(std::make_shared<Sphere>(Sphere({0, 0, 0}, {0, 1, 0}, 0.5, ceiling)));
     //shapes.push_back(std::unique_ptr<Shape>(new Sphere({0, 0, 0}, {0, 1, 0}, 1.6, reflectiveSphere)));
     //shapes.push_back(std::make_shared<Shape>(new Sphere({-2, -2, 0}, {0, 1, 0}, 1.0, reflectiveSphere)));
@@ -86,14 +86,14 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
 
     Scene scene(camera, std::move(shapes));
 
-    m_task = std::make_unique<TaskHandle>(std::move(scene.render(*m_threadPool)));
+    m_task = std::make_unique<threading::TaskHandle>(std::move(scene.render(*m_threadPool)));
 
-    m_task->setStartCallback([this](const Image<ColourRgb<float>>& result) {
+    m_task->setStartCallback([this](const graphics::Image<graphics::ColourRgb<float>>& result) {
         m_image = QImage(QSize(result.width(), result.height()), QImage::Format_ARGB32);
         emit renderStart(result.height());
     });
 
-    m_task->setCompleteCallback([this](const Image<ColourRgb<float>>& result, bool success) {
+    m_task->setCompleteCallback([this](const graphics::Image<graphics::ColourRgb<float>>& result, bool success) {
         char filename[256];
         auto now = std::chrono::system_clock::now();
         auto in_time_t = std::chrono::system_clock::to_time_t(now);
@@ -114,10 +114,10 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
         emit renderComplete(success);
     });
 
-    m_task->setProblemCallback([this](const Image<ColourRgb<float>>& image, const Problem& p) {
+    m_task->setProblemCallback([this](const graphics::Image<graphics::ColourRgb<float>>& image, const threading::Problem& p) {
         auto row = *(image.begin() + p[0]);
-        std::transform(row.begin(), row.end(), (QRgb*)m_image.scanLine(p[0]), [](const ColourRgb<float>& col) {
-            auto temp = colour_cast<ColourRgb<std::uint8_t>>(col);
+        std::transform(row.begin(), row.end(), (QRgb*)m_image.scanLine(p[0]), [](const graphics::ColourRgb<float>& col) {
+            auto temp = graphics::colour_cast<graphics::ColourRgb<std::uint8_t>>(col);
             return qRgb(temp.red(), temp.green(), temp.blue());
         });
 
@@ -130,7 +130,7 @@ RaytracerWindow::~RaytracerWindow()
 
 }
 
-void RaytracerWindow::closeEvent(QCloseEvent* event)
+void RaytracerWindow::closeEvent(QCloseEvent*)
 {
     m_task->cancel();
     m_threadPool->wait();

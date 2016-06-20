@@ -7,8 +7,8 @@
 #include <numeric>
 #include <initializer_list>
 
-#include <PointBase.hpp>
-#include <Vector.hpp>
+#include <geometry/PointBase.hpp>
+#include <geometry/Vector.hpp>
 
 namespace geometry
 {

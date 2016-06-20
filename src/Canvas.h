@@ -1,5 +1,5 @@
-#ifndef Canvas_H
-#define Canvas_H
+#ifndef CANVAS_H
+#define CANVAS_H
 
 #include <QImage>
 #include <QLabel>
@@ -20,4 +20,4 @@ protected:
     virtual void resizeEvent(QResizeEvent* event);
 };
 
-#endif // Canvas_H
+#endif

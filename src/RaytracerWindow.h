@@ -1,12 +1,12 @@
 #ifndef RaytracerWindow_H
 #define RaytracerWindow_H
 
-#include <boost/timer/timer.hpp>
-
 #include <QImage>
 #include <QMainWindow>
 
-#include <ThreadPool.hpp>
+#include <boost/timer/timer.hpp>
+
+#include <threading/ThreadPool.hpp>
 
 class Canvas;
 class QProgressBar;
@@ -21,9 +21,9 @@ private:
     QProgressBar* m_progressBar;
     QTimer* m_refreshTimer;
     QImage m_image;
-    std::unique_ptr<ThreadPool> m_threadPool;
+    std::unique_ptr<threading::ThreadPool> m_threadPool;
     boost::timer::auto_cpu_timer m_autoTimer;
-    std::unique_ptr<TaskHandle> m_task;
+    std::unique_ptr<threading::TaskHandle> m_task;
 
 signals:
     void renderStart(int size);

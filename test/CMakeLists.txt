@@ -1,11 +1,9 @@
 include_directories(
     SYSTEM ${gtest_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/include
 )
 
 file(GLOB test_sources "*.cpp")
-
-set(CMAKE_CXX_COMPILER "clang++")
 
 set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -Weffc++ -pedantic -Wextra")
 

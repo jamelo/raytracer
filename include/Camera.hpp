@@ -9,11 +9,11 @@
 #include <tuple>
 #include <vector>
 
-#include <Image.hpp>
-#include <Point.hpp>
-#include <Ray.hpp>
+#include <geometry/Point.hpp>
+#include <geometry/Ray.hpp>
+#include <graphics/Image.hpp>
+#include <threading/ThreadPool.hpp>
 #include <RandomGenerator.hpp>
-#include <ThreadPool.hpp>
 
 using namespace geometry;
 
@@ -106,16 +106,16 @@ public:
     }
 
     template <typename Renderer, typename AntiAliaser = AntiAliaserRandom>
-    TaskHandle render(ThreadPool& pool, Renderer renderer) const
+    threading::TaskHandle render(threading::ThreadPool& pool, Renderer renderer) const
     {
         AntiAliaser antiAliaser = AntiAliaser(m_antiAliasingAmount);
-        auto image = Image<ColourRgb<float>>(m_resolutionX, m_resolutionY);
+        auto image = graphics::Image<graphics::ColourRgb<float>>(m_resolutionX, m_resolutionY);
 
         Camera c(*this);
 
         //TODO: optimize
 
-        TaskHandle taskHandle = pool.enqueueTask(std::move(image), [=](Image<ColourRgb<float>>& result, const Problem& problem, const std::atomic<bool>& cancelled) {
+        threading::TaskHandle taskHandle = pool.enqueueTask(std::move(image), [=](graphics::Image<graphics::ColourRgb<float>>& result, const threading::Problem& problem, const std::atomic<bool>& cancelled) {
             size_t x = 0;
             size_t y = problem[0];
             auto row = *(result.begin() + y);
@@ -147,7 +147,7 @@ public:
                 pixel *= (1.0 / samples);
                 x++;
             }
-        }, ProblemSpace(c.m_resolutionY));
+        }, threading::ProblemSpace(c.m_resolutionY));
 
         return taskHandle;
     }

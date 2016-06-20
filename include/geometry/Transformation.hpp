@@ -3,8 +3,8 @@
 
 #include <cmath>
 
-#include <Point.hpp>
-#include <Vector.hpp>
+#include <geometry/Point.hpp>
+#include <geometry/Vector.hpp>
 
 namespace geometry
 {

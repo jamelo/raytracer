@@ -1,18 +1,18 @@
-#ifndef Raytracer_HPP
-#define Raytracer_HPP
+#ifndef RAYTRACER_HPP
+#define RAYTRACER_HPP
 
 #include <random>
 #include <vector>
 
 #include <Camera.hpp>
 #include <LightSource.hpp>
-#include <Shape.hpp>
+#include <Shapes.hpp>
 
 class Scene;
 
 constexpr float epsilon = 1e-10;
 
-ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recursion_depth, std::vector<float> refractiveIndexStack = {1.0f});
+graphics::ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recursion_depth, std::vector<float> refractiveIndexStack = {1.0f});
 
 class Scene
 {
@@ -22,8 +22,8 @@ private:
 
 public:
     Scene(const Camera& _cam, std::vector<std::shared_ptr<Shape>>&& _shapes) :
-            m_camera(_cam),
-            m_shapes(std::move(_shapes)) {
+        m_camera(_cam),
+        m_shapes(std::move(_shapes)) {
     }
 
     Scene(const Camera& _cam, const std::vector<std::shared_ptr<Shape>>& _shapes) :
@@ -40,7 +40,7 @@ public:
     }
 
     //TODO: find a more appropriate place to pass in an anti aliaser. Should it not be a property of the camera instead of a property of the scene?
-    TaskHandle render(ThreadPool& pool) const {
+    threading::TaskHandle render(threading::ThreadPool& pool) const {
         Scene s{*this};
         return m_camera.render(pool, [=](const Ray3& r) { return calculateRayColour(r, s, 7); });
     }
@@ -66,14 +66,14 @@ inline Vector3 randomVectorOnUnitHemisphere(const Vector3& direction)
 
 //TODO: add case for transmittance
 //TODO: break this function into smaller functions: one function for each surface type. sum results
-ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recursion_depth, std::vector<float> refractiveIndexStack)
+graphics::ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recursion_depth, std::vector<float> refractiveIndexStack)
 {
     if (recursion_depth == 0) {
-        return ColourRgb<float>(0, 0, 0);
+        return graphics::ColourRgb<float>(0, 0, 0);
     }
 
     IntersectionInfo nearestIntersection;
-    ColourRgb<float> colour{0, 0, 0};
+    graphics::ColourRgb<float> colour{0, 0, 0};
     Ray3 rn = Ray3(r.origin(), normalize(r.direction()));
 
     for (auto&& shape : scene.shapes()) {
@@ -85,7 +85,7 @@ ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recur
     }
 
     if (!nearestIntersection.shape()) {
-        return ColourRgb<float>(0, 0, 0);
+        return graphics::ColourRgb<float>(0, 0, 0);
     }
 
     const Shape& nearestShape = *(nearestIntersection.shape());
@@ -96,7 +96,7 @@ ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recur
     double cosAngleOfIncidence = std::abs(surfaceNormal * rn.direction());
 
     if (cosAngleOfIncidence < epsilon) {
-        return ColourRgb<float>(0, 0, 0);
+        return graphics::ColourRgb<float>(0, 0, 0);
     }
 
     if (surfaceNormal * rn.direction() > 0.0) {
@@ -151,7 +151,7 @@ ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recur
         fresnelReflectance = std::isnan(fresnelReflectance) ? 1.0 : fresnelReflectance;
 
 
-        auto refractedLight = (fresnelReflectance < 1.0) ? calculateRayColour(refractedRay, scene, recursion_depth - 1, newRefractiveIndexStack) * surface.colour() : ColourRgb<float>(0, 0, 0);
+        auto refractedLight = (fresnelReflectance < 1.0) ? calculateRayColour(refractedRay, scene, recursion_depth - 1, newRefractiveIndexStack) * surface.colour() : graphics::ColourRgb<float>(0, 0, 0);
         auto reflectedLight = calculateRayColour(reflectedRay, scene, recursion_depth - 1, refractiveIndexStack);
 
         colour += (reflectedLight * fresnelReflectance + refractedLight * (1.0 - fresnelReflectance)) * surface.transmittance();
@@ -164,4 +164,4 @@ ColourRgb<float> calculateRayColour(const Ray3& r, const Scene& scene, int recur
     return colour;
 }
 
-#endif // Raytracer_HPP
+#endif

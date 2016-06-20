@@ -1,5 +1,5 @@
-#ifndef RandomGenerator_HPP
-#define RandomGenerator_HPP
+#ifndef RANDOM_GENERATOR_HPP
+#define RANDOM_GENERATOR_HPP
 
 #include <random>
 
@@ -16,4 +16,4 @@ public:
     }
 };
 
-#endif // RandomGenerator_HPP
+#endif

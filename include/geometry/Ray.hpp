@@ -1,8 +1,8 @@
 #ifndef Ray_HPP
 #define Ray_HPP
 
-#include <Point.hpp>
-#include <Vector.hpp>
+#include <geometry/Point.hpp>
+#include <geometry/Vector.hpp>
 
 namespace geometry
 {

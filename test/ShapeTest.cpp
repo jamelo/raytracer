@@ -1,14 +1,19 @@
 #include <gtest/gtest.h>
 
-#include <Ray.hpp>
-#include <Shape.hpp>
-#include <Vector.hpp>
+#include <geometry/Ray.hpp>
+#include <geometry/Vector.hpp>
+#include <Shapes.hpp>
 
 using namespace geometry;
 
+namespace
+{
+    const geo_type epsilon = 1e-10;
+}
+
 TEST(ShapeTest, Plane)
 {
-    Plane p({0, 0, 0}, {1, 0, 0}, {0, 1, 0}, SurfaceDescription({0, 0, 0}, 0));
+    shapes::Plane p({0, 0, 0}, {1, 0, 0}, {0, 1, 0}, SurfaceDescription({0, 0, 0}, 0));
 
     Ray3 r1(Point3{0, 0, 1}, Vector3{0, 0, -1});
     Ray3 r2(Point3{0, 0, 1}, Vector3{1, 0, -1});
