@@ -18,6 +18,7 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${QT_INCLUDES}
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${PROJECT_SOURCE_DIR}/vendor/json/src
 )
 
 target_link_libraries(raytracer ${Boost_LIBRARIES} -lboost_system -lboost_timer)
