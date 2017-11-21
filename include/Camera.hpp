@@ -44,9 +44,6 @@ private:
     friend class iterator;
 };
 
-//TODO: consolidate random number generators
-//TODO: properly seed random number generators
-
 class AntiAliaserRandom
 {
 private:
@@ -105,6 +102,19 @@ public:
         m_sensorSize = Vector2(aspectRatio, 1.0);
     }
 
+    Camera(Point2t<int64_t> resolution, Point3 location, Vector3 direction, double roll, double focalLength, int64_t samplesPerPixel) :
+        m_location(location),
+        m_direction(normalize(direction)),
+        m_up({0.0, 1.0, 0.0}),
+        m_focalLength(focalLength),
+        m_resolutionX(resolution.x()),
+        m_resolutionY(resolution.y()),
+        m_antiAliasingAmount(samplesPerPixel) {
+            (void)roll;
+            double aspectRatio = double(m_resolutionX) / double(m_resolutionY);
+        m_sensorSize = Vector2(aspectRatio, 1.0);
+    }
+
     template <typename Renderer, typename AntiAliaser = AntiAliaserRandom>
     threading::TaskHandle render(threading::ThreadPool& pool, Renderer renderer) const
     {
@@ -116,6 +126,8 @@ public:
         //TODO: optimize
 
         threading::TaskHandle taskHandle = pool.enqueueTask(std::move(image), [=](graphics::Image<graphics::ColourRgb<float>>& result, const threading::Problem& problem, const std::atomic<bool>& cancelled) {
+            (void)cancelled;
+
             size_t x = 0;
             size_t y = problem[0];
             auto row = *(result.begin() + y);
@@ -131,14 +143,14 @@ public:
             for (auto& pixel : row) {
                 double xf = -double(x * 2) * recipResX + 1.0;
 
-                size_t samples = 0;
+                int samples = 0;
 
                 //Apply anti aliasing by generating vectors with slightly offset directions.
                 for (const auto& aaOffsetVector : antiAliaser) {
                     double xfaa = (xf + aaOffsetVector.x() * recipResX) * halfSensor.x();
                     double yfaa = (yf + aaOffsetVector.y() * recipResY) * halfSensor.y();
 
-                    Ray3 ray(c.m_location, xfaa * right + yfaa * c.m_up + focalLengthDirection);
+                    Ray3 ray(c.m_location, geometry::normalize(xfaa * right + yfaa * c.m_up + focalLengthDirection));
 
                     pixel += renderer(ray);
                     samples++;

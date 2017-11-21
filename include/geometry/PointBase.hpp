@@ -1,9 +1,13 @@
-#ifndef PointBase_HPP
-#define PointBase_HPP
+#ifndef POINT_BASE_HPP
+#define POINT_BASE_HPP
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <iterator>
 #include <iostream>
+
+#include <Assert.hpp>
 
 namespace geometry
 {
@@ -17,28 +21,19 @@ namespace geometry
             static_assert(Dimensions > 0, "Dimensions must be greater than zero.");
 
         public:
-            typedef typename std::array<T, Dimensions> container_type;
-            typedef typename container_type::value_type value_type;
-            typedef typename container_type::const_iterator iterator;
-            typedef typename container_type::const_iterator const_iterator;
-            typedef typename container_type::const_reverse_iterator reverse_iterator;
-            typedef typename container_type::const_reverse_iterator const_reverse_iterator;
-            typedef typename container_type::size_type size_type;
-            typedef typename container_type::difference_type difference_type;
-            typedef typename container_type::const_pointer pointer;
-            typedef typename container_type::const_pointer const_pointer;
-            typedef typename container_type::const_reference reference;
-            typedef typename container_type::const_reference const_reference;
+            using container_type = typename std::array<T, Dimensions>;
 
-            static constexpr size_type dimensions = Dimensions;
-
-            point_base() :
-                std::array<T, Dimensions>() {
-            }
-
-            point_base(const std::array<T, Dimensions>& _components) :
-                std::array<T, Dimensions>(_components) {
-            }
+            using value_type             = typename container_type::value_type;
+            using iterator               = typename container_type::const_iterator;
+            using const_iterator         = typename container_type::const_iterator;
+            using reverse_iterator       = typename container_type::const_reverse_iterator;
+            using const_reverse_iterator = typename container_type::const_reverse_iterator;
+            using size_type              = typename container_type::size_type;
+            using difference_type        = typename container_type::difference_type;
+            using pointer                = typename container_type::const_pointer;
+            using const_pointer          = typename container_type::const_pointer;
+            using reference              = typename container_type::const_reference;
+            using const_reference        = typename container_type::const_reference;
 
             using container_type::operator[];
             using container_type::data;
@@ -51,19 +46,40 @@ namespace geometry
             using container_type::crbegin;
             using container_type::crend;
 
-            constexpr size_type size() const {
+            static constexpr size_type dimensions = Dimensions;
+
+            point_base() :
+                std::array<T, Dimensions>()
+            {
+                Assert(!isNaN());
+            }
+
+            point_base(const std::array<T, Dimensions>& components) :
+                std::array<T, Dimensions>(components)
+            {
+                Assert(!isNaN());
+            }
+
+            constexpr size_type size() const
+            {
                 return Dimensions;
             }
 
-            friend std::ostream& operator<<(std::ostream& os, const point_base<T, Dimensions>& p) {
+            friend std::ostream& operator<<(std::ostream& os, const point_base<T, Dimensions>& p)
+            {
                 os << "(";
 
                 std::copy(p.begin(), p.end() - 1, std::ostream_iterator<T>(os, ", "));
                 std::copy(p.end() - 1, p.end(), std::ostream_iterator<T>(os, ""));
-                
+
                 os << ")";
 
                 return os;
+            }
+
+            bool isNaN() const
+            {
+                return std::any_of(begin(), end(), [](T x){ return std::isnan(x); });
             }
         };
 
@@ -71,4 +87,4 @@ namespace geometry
 
 }
 
-#endif // PointBase_HPP
+#endif

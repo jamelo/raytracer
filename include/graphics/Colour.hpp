@@ -1,6 +1,7 @@
 #ifndef COLOUR_HPP
 #define COLOUR_HPP
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -14,7 +15,7 @@
 namespace graphics
 {
 
-    namespace impl
+    namespace priv
     {
 
         template <typename T>
@@ -39,68 +40,113 @@ namespace graphics
     template <typename T>
     class ColourRgb
     {
-    private:
-        T m_red;
-        T m_green;
-        T m_blue;
-
     public:
         ColourRgb() = default;
 
         ColourRgb(T _red, T _green, T _blue) :
-        m_red(_red),
-        m_green(_green),
-        m_blue(_blue)
-        { }
-
-        T red() const { return m_red; }
-        T green() const { return m_green; }
-        T blue() const { return m_blue; }
-
-        //TODO: implement more operators
-
-        ColourRgb<T>& operator+=(const ColourRgb<T>& rhs)
+            m_red(_red),
+            m_green(_green),
+            m_blue(_blue)
         {
-            m_red += rhs.m_red;
-            m_green += rhs.m_green;
-            m_blue += rhs.m_blue;
 
-            return *this;
         }
 
-        ColourRgb<T> operator+(const ColourRgb<T>& rhs) const {
-            return ColourRgb<T>(*this) += rhs;
-        }
-
-        ColourRgb<T>& operator*=(T rhs)
+        T red() const
         {
-            m_red *= rhs;
-            m_green *= rhs;
-            m_blue *= rhs;
-
-            return *this;
+            return m_red;
         }
 
-        ColourRgb<T> operator*(T rhs) const {
-            return ColourRgb<T>(*this) *= rhs;
+        T green() const
+        {
+            return m_green;
         }
 
-        friend ColourRgb<T> operator*(T lhs, const ColourRgb<T>& rhs) {
+        T blue() const
+        {
+            return m_blue;
+        }
+
+        ColourRgb<T> operator+(const ColourRgb<T>& rhs) const;
+        ColourRgb<T> operator*(const ColourRgb<T>& rhs) const;
+        ColourRgb<T> operator*(T rhs) const;
+
+        ColourRgb<T>& operator+=(const ColourRgb<T>& rhs);
+        ColourRgb<T>& operator*=(const ColourRgb<T>& rhs);
+        ColourRgb<T>& operator*=(T rhs);
+
+        T max() const;
+        T average() const;
+
+        friend ColourRgb<T> operator*(T lhs, const ColourRgb<T>& rhs)
+        {
             return rhs * lhs;
         }
 
-        ColourRgb<T>& operator*=(const ColourRgb<T>& rhs) {
-            m_red *= rhs.red();
-            m_green *= rhs.green();
-            m_blue *= rhs.blue();
-
-            return *this;
-        }
-
-        ColourRgb<T> operator*(const ColourRgb<T>& rhs) const {
-            return ColourRgb<T>(*this) *= rhs;
-        }
+    private:
+        T m_red;
+        T m_green;
+        T m_blue;
     };
+
+    template <typename T>
+    inline ColourRgb<T>& ColourRgb<T>::operator+=(const ColourRgb<T>& rhs)
+    {
+        m_red += rhs.m_red;
+        m_green += rhs.m_green;
+        m_blue += rhs.m_blue;
+
+        return *this;
+    }
+
+    template <typename T>
+    inline ColourRgb<T> ColourRgb<T>::operator+(const ColourRgb<T>& rhs) const
+    {
+        return ColourRgb<T>(*this) += rhs;
+    }
+
+    template <typename T>
+    inline ColourRgb<T>& ColourRgb<T>::operator*=(T rhs)
+    {
+        m_red *= rhs;
+        m_green *= rhs;
+        m_blue *= rhs;
+
+        return *this;
+    }
+
+    template <typename T>
+    inline ColourRgb<T> ColourRgb<T>::operator*(T rhs) const
+    {
+        return ColourRgb<T>(*this) *= rhs;
+    }
+
+    template <typename T>
+    inline ColourRgb<T>& ColourRgb<T>::operator*=(const ColourRgb<T>& rhs)
+    {
+        m_red *= rhs.red();
+        m_green *= rhs.green();
+        m_blue *= rhs.blue();
+
+        return *this;
+    }
+
+    template <typename T>
+    inline ColourRgb<T> ColourRgb<T>::operator*(const ColourRgb<T>& rhs) const
+    {
+        return ColourRgb<T>(*this) *= rhs;
+    }
+
+    template <typename T>
+    inline T ColourRgb<T>::max() const
+    {
+        return std::max({m_red, m_green, m_blue});
+    }
+
+    template <typename T>
+    inline T ColourRgb<T>::average() const
+    {
+        return (m_red + m_green + m_blue) * (1.0 / 3.0);
+    }
 
     template <typename Target, typename Source>
     Target colour_cast(const Source& src);
@@ -109,9 +155,9 @@ namespace graphics
     inline ColourRgb<std::uint8_t> colour_cast(const ColourRgb<float>& src)
     {
         return ColourRgb<std::uint8_t>(
-            impl::map_float_to_uint8(src.red()),
-            impl::map_float_to_uint8(src.green()),
-            impl::map_float_to_uint8(src.blue())
+            priv::map_float_to_uint8(src.red()),
+            priv::map_float_to_uint8(src.green()),
+            priv::map_float_to_uint8(src.blue())
         );
     }
 
@@ -119,9 +165,9 @@ namespace graphics
     inline ColourRgb<float> colour_cast(const ColourRgb<std::uint8_t>& src)
     {
         return ColourRgb<float>(
-            impl::map_uint8_to_float(src.red()),
-            impl::map_uint8_to_float(src.green()),
-            impl::map_uint8_to_float(src.blue())
+            priv::map_uint8_to_float(src.red()),
+            priv::map_uint8_to_float(src.green()),
+            priv::map_uint8_to_float(src.blue())
         );
     }
 
@@ -129,9 +175,9 @@ namespace graphics
     inline sf::Color colour_cast(const ColourRgb<float>& src)
     {
         return sf::Color(
-            impl::map_float_to_uint8(src.red()),
-            impl::map_float_to_uint8(src.green()),
-            impl::map_float_to_uint8(src.blue())
+            priv::map_float_to_uint8(src.red()),
+            priv::map_float_to_uint8(src.green()),
+            priv::map_float_to_uint8(src.blue())
         );
     }
 
@@ -139,9 +185,9 @@ namespace graphics
     inline ColourRgb<float> colour_cast(const sf::Color& src)
     {
         return ColourRgb<float>(
-            impl::map_uint8_to_float(src.r),
-            impl::map_uint8_to_float(src.g),
-            impl::map_uint8_to_float(src.b)
+            priv::map_uint8_to_float(src.r),
+            priv::map_uint8_to_float(src.g),
+            priv::map_uint8_to_float(src.b)
         );
     }
 

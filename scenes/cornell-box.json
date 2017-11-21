@@ -1,34 +1,32 @@
-
 {
-    "__comment": "A cornell box with a white cube, a glass ball and a metal ball.",
-
     "title": "Cornell Box",
+    "description": "A cornell box with a white cube, a glass ball and a metal ball.",
 
     "camera": {
-        "resolution": [1280, 720],
+        "resolution": [1920, 1080],
         "location": [0, 0, -9],
         "direction": [0, 0, 1],
-        "roll": 0,
+        "roll": 0.0,
         "focal-length": 1.0,
-        "samples-per-pixel": 512
+        "samples-per-pixel": 256
     },
 
-    "surfaces": {
+    "Surfaces": {
         "wall-red": {
             "colour": [1, 0, 0],
-            "difuse-reflectance": 1.0,
+            "difuse-reflectance": 1.0
         },
         "wall-green": {
             "colour": [0, 1, 0],
-            "difuse-reflectance": 1.0,
+            "difuse-reflectance": 1.0
         },
         "wall-white": {
             "colour": [1, 1, 1],
-            "difuse-reflectance": 1.0,
+            "difuse-reflectance": 1.0
         },
         "light-source": {
             "colour": [1, 1, 1],
-            "emittance": 6.0
+            "emittance": 1.3
         },
         "metal": {
             "colour": [1, 1, 1],
@@ -80,6 +78,13 @@
             "normal": [0, 0, 1],
             "surface": "wall-white"
         },
+        "light": {
+            "shape": "rectangle",
+            "point1": [-1, 2.99, -1],
+            "point2": [1, 2.99, -1],
+            "point3": [-1, 2.99, 1],
+            "surface": "light-source"
+        },
         "cube": {
             "shape": "box",
             "location": [0, -1, 0],
@@ -98,13 +103,6 @@
             "location": [2, -2.1, -1.6],
             "radius": 0.9,
             "surface": "glass"
-        },
-        "light": {
-            "shape": "rectangle",
-            "point1": [-1, 2.99, -1],
-            "point2": [1, 2.99, -1],
-            "point3": [-1, 2.99, 1],
-            "surface": "light-source"
         }
     }
 }

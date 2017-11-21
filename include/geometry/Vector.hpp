@@ -1,5 +1,5 @@
-#ifndef Vector_HPP
-#define Vector_HPP
+#ifndef VECTOR_HPP
+#define VECTOR_HPP
 
 #include <algorithm>
 #include <cmath>
@@ -18,75 +18,44 @@ namespace geometry
     public:
         Vector() :
             detail::point_base<T, Dimensions>()
-        { }
+        {
 
-        Vector(const std::array<T, Dimensions>& _components) :
-                detail::point_base<T, Dimensions>(_components) {
         }
 
-        explicit Vector(const detail::point_base<T, Dimensions>& _data) :
-                detail::point_base<T, Dimensions>(_data) {
+        Vector(const std::array<T, Dimensions>& components) :
+            detail::point_base<T, Dimensions>(components)
+        {
+
         }
 
-        Vector<T, Dimensions> operator+() const {
-            return *this;
+        explicit Vector(const detail::point_base<T, Dimensions>& data) :
+            detail::point_base<T, Dimensions>(data)
+        {
+
         }
 
-        Vector<T, Dimensions> operator-() const {
-            Vector<T, Dimensions> result = *this;
-            std::transform(result.begin(), result.end(), result.begin(), std::negate<T>());
-            return result;
-        }
+        Vector<T, Dimensions> operator+() const;
+        Vector<T, Dimensions> operator-() const;
 
-        Vector<T, Dimensions>& operator+=(const Vector<T, Dimensions>& rhs) {
-            std::transform(this->begin(), this->end(), rhs.begin(), this->begin(), std::plus<T>());
-            return *this;
-        }
+        Vector<T, Dimensions> operator+(const Vector<T, Dimensions>& rhs) const;
+        Vector<T, Dimensions> operator-(const Vector<T, Dimensions>& rhs) const;
 
-        Vector<T, Dimensions>& operator-=(const Vector<T, Dimensions>& rhs) {
-            std::transform(this->begin(), this->end(), rhs.begin(), this->begin(), std::minus<T>());
-            return *this;
-        }
+        Vector<T, Dimensions> operator*(T rhs) const;
+        Vector<T, Dimensions> operator/(T rhs) const;
 
-        Vector<T, Dimensions>& operator*=(T rhs) {
-            std::transform(this->begin(), this->end(), this->begin(), [=](T lhs) { return lhs * rhs; });
-            return *this;
-        }
+        Vector<T, Dimensions>& operator+=(const Vector<T, Dimensions>& rhs);
+        Vector<T, Dimensions>& operator-=(const Vector<T, Dimensions>& rhs);
 
-        Vector<T, Dimensions>& operator/=(T rhs) {
-            std::transform(this->begin(), this->end(), this->begin(), [=](T lhs) { return lhs / rhs; });
-            return *this;
-        }
+        Vector<T, Dimensions>& operator*=(T rhs);
+        Vector<T, Dimensions>& operator/=(T rhs);
 
-        Vector<T, Dimensions> operator+(const Vector<T, Dimensions>& rhs) const {
-            return Vector<T, Dimensions>(*this) += rhs;
-        }
+        T operator*(const Vector<T, Dimensions>& rhs) const;
 
-        Vector<T, Dimensions> operator-(const Vector<T, Dimensions>& rhs) const {
-            return Vector<T, Dimensions>(*this) -= rhs;
-        }
+        bool operator==(const Vector<T, Dimensions>& rhs);
+        bool operator!=(const Vector<T, Dimensions>& rhs);
 
-        Vector<T, Dimensions> operator*(T rhs) const {
-            return Vector<T, Dimensions>(*this) *= rhs;
-        }
-
-        Vector<T, Dimensions> operator/(T rhs) const {
-            return Vector<T, Dimensions>(*this) /= rhs;
-        }
-
-        T operator*(const Vector<T, Dimensions>& rhs) const {
-            return std::inner_product(this->begin(), this->end(), rhs.begin(), 0.0);
-        }
-
-        bool operator==(const Vector<T, Dimensions>& rhs) {
-            return std::equal(this->begin(), this->end(), rhs.begin());
-        }
-
-        bool operator!=(const Vector<T, Dimensions>& rhs) {
-            return !std::equal(this->begin(), this->end(), rhs.begin());
-        }
-
-        friend Vector<T, Dimensions> operator*(T lhs, const Vector<T, Dimensions>& rhs) {
+        friend Vector<T, Dimensions> operator*(T lhs, const Vector<T, Dimensions>& rhs)
+        {
             return rhs * lhs;
         }
     };
@@ -98,15 +67,26 @@ namespace geometry
         Vector2t() = default;
 
         Vector2t(const Vector<T, 2>& _v) :
-                Vector<T, 2>(_v) {
+            Vector<T, 2>(_v)
+        {
+
         }
 
         Vector2t(T _x, T _y) :
-                Vector<T, 2>({_x, _y}) {
+            Vector<T, 2>({_x, _y})
+        {
+
         }
 
-        T x() const { return (*this)[0]; }
-        T y() const { return (*this)[1]; }
+        T x() const
+        {
+            return (*this)[0];
+        }
+
+        T y() const
+        {
+            return (*this)[1];
+        }
     };
 
     template <typename T>
@@ -116,41 +96,122 @@ namespace geometry
         Vector3t() = default;
 
         Vector3t(const Vector<T, 3>& _v) :
-                Vector<T, 3>(_v) {
+            Vector<T, 3>(_v)
+        {
+
         }
 
         Vector3t(T _x, T _y, T _z) :
-                Vector<T, 3>({_x, _y, _z})
-        { }
+            Vector<T, 3>({_x, _y, _z})
+        {
 
-        T x() const { return (*this)[0]; }
-        T y() const { return (*this)[1]; }
-        T z() const { return (*this)[2]; }
+        }
+
+        T x() const
+        {
+            return (*this)[0];
+        }
+
+        T y() const
+        {
+            return (*this)[1];
+        }
+
+        T z() const
+        {
+            return (*this)[2];
+        }
     };
 
-    typedef Vector2t<geo_type> Vector2;
-    typedef Vector3t<geo_type> Vector3;
+    using Vector2 = Vector2t<geo_type>;
+    using Vector3 = Vector3t<geo_type>;
 
-    template <typename T>
-    inline Vector<T, 3> cross_product(const Vector<T, 3>& lhs, const Vector<T, 3>& rhs)
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions> Vector<T, Dimensions>::operator+() const
     {
-        return Vector<T, 3>(std::array<T, 3>({
-                lhs[1] * rhs[2] - lhs[2] * rhs[1],
-                lhs[2] * rhs[0] - lhs[0] * rhs[2],
-                lhs[0] * rhs[1] - lhs[1] * rhs[0]
-        }));
+        return *this;
     }
 
     template <typename T, size_t Dimensions>
-    inline T abs(const Vector<T, Dimensions>& v) {
-        return std::sqrt(v * v);
+    Vector<T, Dimensions> Vector<T, Dimensions>::operator-() const
+    {
+        Vector<T, Dimensions> result = *this;
+        std::transform(result.begin(), result.end(), result.begin(), std::negate<T>());
+        return result;
     }
 
     template <typename T, size_t Dimensions>
-    inline Vector<T, Dimensions> normalize(const Vector<T, Dimensions>& v) {
-        return v / abs(v);
+    Vector<T, Dimensions>& Vector<T, Dimensions>::operator+=(const Vector<T, Dimensions>& rhs)
+    {
+        std::transform(this->begin(), this->end(), rhs.begin(), this->begin(), std::plus<T>());
+        return *this;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions>& Vector<T, Dimensions>::operator-=(const Vector<T, Dimensions>& rhs)
+    {
+        std::transform(this->begin(), this->end(), rhs.begin(), this->begin(), std::minus<T>());
+        return *this;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions>& Vector<T, Dimensions>::operator*=(T rhs)
+    {
+        std::transform(this->begin(), this->end(), this->begin(), [=](T lhs) { return lhs * rhs; });
+        return *this;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions>& Vector<T, Dimensions>::operator/=(T rhs)
+    {
+        std::transform(this->begin(), this->end(), this->begin(), [=](T lhs) { return lhs / rhs; });
+        return *this;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions> Vector<T, Dimensions>::operator+(const Vector<T, Dimensions>& rhs) const
+    {
+        return Vector<T, Dimensions>(*this) += rhs;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions> Vector<T, Dimensions>::operator-(const Vector<T, Dimensions>& rhs) const
+    {
+        return Vector<T, Dimensions>(*this) -= rhs;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions> Vector<T, Dimensions>::operator*(T rhs) const
+    {
+        return Vector<T, Dimensions>(*this) *= rhs;
+    }
+
+    template <typename T, size_t Dimensions>
+    Vector<T, Dimensions> Vector<T, Dimensions>::operator/(T rhs) const
+    {
+        return Vector<T, Dimensions>(*this) /= rhs;
+    }
+
+    template <typename T, size_t Dimensions>
+    T Vector<T, Dimensions>::operator*(const Vector<T, Dimensions>& rhs) const
+    {
+        return std::inner_product(this->begin(), this->end(), rhs.begin(), 0.0);
+    }
+
+    template <typename T, size_t Dimensions>
+    bool Vector<T, Dimensions>::operator==(const Vector<T, Dimensions>& rhs)
+    {
+        return std::equal(this->begin(), this->end(), rhs.begin());
+    }
+
+    template <typename T, size_t Dimensions>
+    bool Vector<T, Dimensions>::operator!=(const Vector<T, Dimensions>& rhs)
+    {
+        return !std::equal(this->begin(), this->end(), rhs.begin());
     }
 
 }
 
-#endif // Vector_HPP
+#include <geometry/VectorMath.hpp>
+
+#endif

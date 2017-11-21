@@ -1,0 +1,102 @@
+{
+    "title": "Cornell Box",
+    "description": "A cornell box with a white cube, a glass ball and a metal ball.",
+
+    "camera": {
+        "resolution": [854, 480],
+        "location": [0, 0, -7],
+        "direction": [0, 0, 1],
+        "roll": 0.0,
+        "focal-length": 0.75,
+        "samples-per-pixel": 512
+    },
+
+    "Surfaces": {
+        "wall-red": {
+            "colour": [1, 0, 0],
+            "difuse-reflectance": 1.0
+        },
+        "wall-green": {
+            "colour": [0, 1, 0],
+            "difuse-reflectance": 1.0
+        },
+        "wall-white": {
+            "colour": [1, 1, 1],
+            "difuse-reflectance": 1.0
+        },
+        "wall-blue": {
+            "colour": [0, 0.2, 1],
+            "difuse-reflectance": 1.0
+        },
+        "wall-yellow": {
+            "colour": [1, 1, 0],
+            "difuse-reflectance": 1.0
+        },
+        "light-source": {
+            "colour": [1, 1, 1],
+            "emittance": 13.0
+        },
+        "metal": {
+            "colour": [1, 1, 1],
+            "difuse-reflectance": 0.0,
+            "reflectance": 0.9
+        },
+        "glass": {
+            "colour": [1, 1, 1],
+            "difuse-reflectance": 0.0,
+            "transmittance": 1.0,
+            "refractive-index": 1.5
+        }
+    },
+
+    "geometry": {
+        "left-wall": {
+            "shape": "plane",
+            "location": [-4, 0, 0],
+            "normal": [1, 0, 0],
+            "surface": "wall-red"
+        },
+        "right-wall": {
+            "shape": "plane",
+            "location":  [4, 0, 0],
+            "normal": [-1, 0, 0],
+            "surface": "wall-green"
+        },
+        "ceiling": {
+            "shape": "plane",
+            "location": [0, 3, 0],
+            "normal": [0, -1, 0],
+            "surface": "wall-white"
+        },
+        "floor": {
+            "shape": "plane",
+            "location": [0, -3, 0],
+            "normal": [0, 1, 0],
+            "surface": "wall-white"
+        },
+        "back-wall": {
+            "shape": "plane",
+            "location": [0, 0, 3],
+            "normal": [0, 0, -1],
+            "surface": "wall-yellow"
+        },
+        "front-wall": {
+            "shape": "plane",
+            "location": [0, 0, -8],
+            "normal": [0, 0, 1],
+            "surface": "wall-blue"
+        },
+        "chmutov": {
+            "shape": "chmutov",
+            "location": [0, 0, 0],
+            "surface": "glass"
+        },
+        "light": {
+            "shape": "rectangle",
+            "point1": [-1, 2.99, -1],
+            "point2": [1, 2.99, -1],
+            "point3": [-1, 2.99, 1],
+            "surface": "light-source"
+        }
+    }
+}

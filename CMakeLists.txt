@@ -18,4 +18,5 @@ configure_file(
 include_directories(
     "${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_BINARY_DIR}"
+    ${PROJECT_SOURCE_DIR}/vendor/json/src
 )

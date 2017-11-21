@@ -16,15 +16,6 @@ class RaytracerWindow : public QMainWindow
 {
     Q_OBJECT
 
-private:
-    Canvas* m_canvas;
-    QProgressBar* m_progressBar;
-    QTimer* m_refreshTimer;
-    QImage m_image;
-    std::unique_ptr<threading::ThreadPool> m_threadPool;
-    boost::timer::auto_cpu_timer m_autoTimer;
-    std::unique_ptr<threading::TaskHandle> m_task;
-
 signals:
     void renderStart(int size);
     void renderComplete(bool success);
@@ -38,10 +29,20 @@ private slots:
 
 public:
     RaytracerWindow(QWidget* parent = nullptr);
+
     virtual ~RaytracerWindow();
 
 protected:
     virtual void closeEvent(QCloseEvent* event);
+
+private:
+    Canvas* m_canvas;
+    QProgressBar* m_progressBar;
+    QTimer* m_refreshTimer;
+    QImage m_image;
+    std::unique_ptr<threading::ThreadPool> m_threadPool;
+    boost::timer::auto_cpu_timer m_autoTimer;
+    std::unique_ptr<threading::TaskHandle> m_task;
 
 };
 

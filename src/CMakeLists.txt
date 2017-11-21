@@ -6,9 +6,14 @@ find_package(Qt4 REQUIRED)
 find_package(Boost 1.55 COMPONENTS REQUIRED)
 find_package(SFML 2.2 REQUIRED system window graphics)
 
-set(SOURCES main.cpp RaytracerWindow.cpp Canvas.cpp)
-add_executable(raytracer ${SOURCES})
+set(SOURCES
+    main.cpp
+    Raytracer.cpp
+    RaytracerWindow.cpp
+    Canvas.cpp
+)
 
+add_executable(raytracer ${SOURCES})
 set(CMAKE_AUTOMOC ON)
 qt4_automoc(${SOURCES})
 

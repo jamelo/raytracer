@@ -1,8 +1,10 @@
 #include "config.h"
+#include "RaytracerWindow.h"
 
+#include <iostream>
 #include <QApplication>
 
-#include "RaytracerWindow.h"
+#include <Exceptions.hpp>
 
 int main(int argc, char** argv)
 {

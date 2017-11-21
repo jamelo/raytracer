@@ -16,6 +16,10 @@
 
 #include "Canvas.h"
 
+//TODO: find a more appropriate place to define pi
+
+#include <SceneLoaderJson.hpp>
+#include <builders/SceneBuilder.hpp>
 #include <threading/ThreadPool.hpp>
 #include <graphics/Image.hpp>
 #include <Camera.hpp>
@@ -34,7 +38,7 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
     menuBar()->addMenu("&File")->addAction(action);
 
     this->setCentralWidget(m_canvas);
-    this->setGeometry(50, 50, 848, 480);
+    this->setGeometry(50, 50, 1920, 1080);
 
     m_progressBar->setMinimumWidth(150);
     m_progressBar->setMaximumWidth(150);
@@ -49,44 +53,12 @@ RaytracerWindow::RaytracerWindow(QWidget* parent) : QMainWindow(parent),
 
     connect(m_refreshTimer, SIGNAL(timeout()), this, SLOT(refreshTimerTick()));
 
-    //Camera camera(1280, 720, {1.4, 1.7, 5}, {-1.5, -2.0, -5}, 1.3, {0.3, 1, 0});
+    SceneLoaderJson loader;
 
-    //SurfaceDescription planeSurface({1, 1, 1}, 0, 0, 0, 5.0);
-    //SurfaceDescription sphereSurface({0.6, 0.8, 1}, 1);
+    builders::BuilderArgs args = loader.load("../../scenes/cornell-box.json");
+    auto scene = builders::SceneBuilder().build(args);
 
-    //std::vector<std::unique_ptr<Shape>> shapes;
-    //shapes.push_back(std::unique_ptr<Shape>(new Plane({0, 0, -3}, {1, 0, 0}, {0, 1, 0}, planeSurface)));
-    //shapes.push_back(std::unique_ptr<Shape>(new Sphere({0, 0, 1}, {0, 1, 0}, 1.0, sphereSurface)));
-    //shapes.push_back(std::unique_ptr<Shape>(new Chmutov({0, 0, 1}, {0, 1, 0}, 1.0, 0.5, sphereSurface)));
-
-    Camera camera(1250, 720, {0, 0, -9}, {0, 0, 1}, 1, {0, 1, 0}, 512);
-
-    SurfaceDescription redWall({1, 0, 0}, 1, 0, 0, 0);
-    SurfaceDescription greenWall({0, 1, 0}, 1, 0, 0, 0);
-    SurfaceDescription whiteWall({1, 1, 1}, 1, 0, 0, 0);
-    SurfaceDescription lightSource({1, 1, 1}, 0, 0, 0, 6);
-    SurfaceDescription reflective({1, 1, 1}, 0, 0.9, 0, 0);
-    SurfaceDescription glass({1, 1, 1}, 0, 0, 1.0, 0, 1.5);
-
-    std::vector<std::shared_ptr<Shape>> shapes;
-    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({-4, 0, 0}, {0, 1, 0}, {0, 0, 1}, redWall)));
-    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({+4, 0, 0}, {0, -1, 0}, {0, 0, 1}, greenWall)));
-    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, +3, 0}, {1, 0, 0}, {0, 0, 1}, whiteWall)));
-    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, -3, 0}, {-1, 0, 0}, {0, 0, 1}, whiteWall)));
-    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, 0, +3}, {-1, 0, 0}, {0, 1, 0}, whiteWall)));
-    shapes.emplace_back(std::make_shared<shapes::Plane>(shapes::Plane({0, 0, -10}, {1, 0, 0}, {0, 1, 0}, whiteWall)));
-    shapes.emplace_back(std::make_shared<shapes::Rectangle>(shapes::Rectangle({-1, 2.99, -1}, {1, 2.99, -1}, {-1, 2.99, 1}, lightSource)));
-    shapes.emplace_back(std::make_shared<shapes::Box>(shapes::Box({2, 2, 2}, {0, -1, 0}, {pi()/4, pi()/5, pi()/4}, whiteWall)));
-    shapes.emplace_back(std::make_shared<shapes::Sphere>(shapes::Sphere({-2, -2, -1.5}, {0, 1, 0}, 1, reflective)));
-    shapes.emplace_back(std::make_shared<shapes::Sphere>(shapes::Sphere({2, -2.1, -1.6}, {0, 1, 0}, 0.9, glass)));
-    //shapes.emplace_back(std::make_shared<Sphere>(Sphere({0, 0, 0}, {0, 1, 0}, 0.5, ceiling)));
-    //shapes.push_back(std::unique_ptr<Shape>(new Sphere({0, 0, 0}, {0, 1, 0}, 1.6, reflectiveSphere)));
-    //shapes.push_back(std::make_shared<Shape>(new Sphere({-2, -2, 0}, {0, 1, 0}, 1.0, reflectiveSphere)));
-    //shapes.push_back(std::unique_ptr<Shape>(new Chmutov({2, 0, 0}, {0, 1, 0}, 3, 1, reflectiveSphere)));
-
-    Scene scene(camera, std::move(shapes));
-
-    m_task = std::make_unique<threading::TaskHandle>(std::move(scene.render(*m_threadPool)));
+    m_task = std::make_unique<threading::TaskHandle>(std::move(::render(*m_threadPool, scene)));
 
     m_task->setStartCallback([this](const graphics::Image<graphics::ColourRgb<float>>& result) {
         m_image = QImage(QSize(result.width(), result.height()), QImage::Format_ARGB32);
@@ -146,6 +118,7 @@ void RaytracerWindow::renderStarted(int size)
 
 void RaytracerWindow::renderCompleted(bool success)
 {
+    (void)success;
     m_progressBar->setVisible(false);
     m_refreshTimer->start();
 
@@ -154,6 +127,7 @@ void RaytracerWindow::renderCompleted(bool success)
 
 void RaytracerWindow::lineCompleted(int line)
 {
+    (void)line;
     m_progressBar->setValue(m_progressBar->value() + 1);
 }
 

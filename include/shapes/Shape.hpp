@@ -8,44 +8,61 @@
 #include <geometry/Ray.hpp>
 #include <geometry/Transformation.hpp>
 #include <geometry/Vector.hpp>
-#include <SurfaceDescription.hpp>
+#include <Surface.hpp>
 
-using namespace geometry;
-
-class Shape;
-
-class IntersectionInfo
+namespace shapes
 {
-private:
-    double m_distance;
-    const Shape* m_shape;
 
-public:
-    IntersectionInfo(double _distance = std::numeric_limits<double>::infinity(), const Shape* _shape = nullptr) :
-        m_distance(_distance),
-        m_shape(_shape)
-    { }
+    class Shape
+    {
+    public:
+        class IntersectionResult
+        {
+        private:
+            double m_distance;
+            const shapes::Shape* m_shape;
 
-    double distance() const { return m_distance; }
-    const Shape* shape() const { return m_shape; }
-};
+        public:
+            IntersectionResult(double distance = std::numeric_limits<double>::infinity(), const shapes::Shape* shape = nullptr) :
+                m_distance(distance),
+                m_shape(shape)
+            { }
 
-class Shape
-{
-private:
-    SurfaceDescription m_surface;
+            double distance() const { return m_distance; }
+            const shapes::Shape* shape() const { return m_shape; }
+        };
 
-public:
-    Shape(const SurfaceDescription& _surface) :
-            m_surface(_surface) {
-    }
+        Shape(const std::shared_ptr<Surface>& surface) :
+            m_surface(surface) {
+        }
 
-    virtual IntersectionInfo calculateRayIntersection(const Ray3& ray) const = 0;
-    virtual Vector3 calculateNormal(const Point3& p) const = 0;
-    virtual Point2 textureMap(const Point3& p) const = 0;
+        virtual ~Shape()
+        {
 
-    const SurfaceDescription& surface() const { return m_surface; }
-    SurfaceDescription& surface() { return m_surface; }
-};
+        }
 
-#endif // Shapes_HPP
+        virtual IntersectionResult calculateRayIntersection(const geometry::Ray3& ray) const = 0;
+
+        virtual geometry::Vector3 calculateNormal(const geometry::Point3& p) const = 0;
+
+        virtual geometry::Point2 textureMap(const geometry::Point3& p) const = 0;
+
+        virtual double surfaceArea() const
+        {
+            throw -1;
+        }
+
+        virtual geometry::Point3 sampleSurface() const
+        {
+            throw -1;
+        }
+
+        const Surface& surface() const { return *m_surface; }
+
+    private:
+        std::shared_ptr<Surface> m_surface;
+    };
+
+}
+
+#endif
